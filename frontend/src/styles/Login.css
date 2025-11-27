@@ -1,0 +1,683 @@
+/* Login.css - Simplified Clean White Theme aligned with Admin palette */
+
+/* Enhanced Tribal Color Palette - Matching Dashboard */
+:root {
+  /* Tribal Color Palette - Enhanced for Dashboard Consistency */
+  --primary-red: #DC143C;          /* Crimson Red - main brand color */
+  --secondary-red: #B22222;        /* Fire Brick - secondary red */
+  --bright-orange: #FF8C00;        /* Dark Orange - vibrant orange */
+  --warm-yellow: #FFD700;          /* Gold - bright yellow */
+  --deep-yellow: #DAA520;          /* Goldenrod - deeper yellow */
+  --tribal-black: #2F2F2F;         /* Dark Gray/Black - structural elements */
+  --pure-white: #FFFFFF;           /* Pure White - clean background */
+  --soft-white: #F8F8F8;           /* Ghost White - subtle background */
+  --warm-cream: #FFF8DC;           /* Cornsilk - warm accent */
+  --text-dark: #1A1A1A;            /* Almost Black - text */
+  
+  /* Enhanced Gradients - Matching Dashboard */
+  /* Gradients removed for a flat, simple look */
+}
+
+/* Success Modal */
+/* Generic modal overlay (hidden by default; shown when .is-visible is added) */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: transparent;
+  /* backdrop-filter: blur(8px); */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 0.25s ease, visibility 0.25s ease;
+}
+
+.modal-overlay.is-visible {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.success-modal {
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 32px;
+  max-width: 400px;
+  width: 90%;
+  text-align: center;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+  animation: slideUp 0.2s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Enhanced Role selection modal - Clean White Design */
+.modal-card {
+  background: #ffffff;
+  border-radius: 16px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+  border: 1px solid #e5e7eb;
+  width: 92%;
+  max-width: 520px;
+  max-height: 90vh;
+  padding: 2rem;
+  position: relative;
+  opacity: 0;
+  transform: translateY(8px);
+  transition: all 0.2s ease;
+  overflow-y: auto;
+  /* Hide scrollbar but keep scroll functionality */
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* Internet Explorer 10+ */
+}
+
+/* Removed gradient line on top of modal card */
+
+.modal-card::-webkit-scrollbar {
+  display: none; /* WebKit browsers (Chrome, Safari, Edge) */
+}
+
+/* Removed decorative side accent for a cleaner look */
+
+.modal-card.enter {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.modal-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 36px;
+  height: 36px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #ffffff;
+  color: var(--primary-red);
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.2s ease;
+  font-weight: bold;
+}
+
+.modal-close:hover {
+  background: #f9fafb;
+}
+
+@keyframes slideUp {
+  from { 
+    opacity: 0;
+    transform: translateY(30px) scale(0.95);
+  }
+  to { 
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.success-modal::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: var(--primary-red);
+}
+
+.modal-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+}
+
+.success-icon {
+  font-size: 48px;
+  animation: bounce 0.6s ease;
+}
+
+@keyframes bounce {
+  0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+  40% { transform: translateY(-10px); }
+  60% { transform: translateY(-5px); }
+}
+
+.modal-title {
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: var(--tribal-black);
+  margin: 0 0 1rem 0;
+  text-align: center;
+  position: relative;
+}
+
+.modal-title::after {
+  content: '';
+  position: absolute;
+  bottom: -8px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 56px;
+  height: 3px;
+  background: var(--primary-red);
+  border-radius: 2px;
+}
+
+.modal-message {
+  font-size: 16px;
+  color: #718096;
+  margin: 0;
+  line-height: 1.5;
+}
+
+.modal-btn {
+  background: linear-gradient(135deg, #dc143c, #ff8c00);
+  border: none;
+  border-radius: 12px;
+  color: white;
+  font-size: 16px;
+  font-weight: 600;
+  padding: 14px 32px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  margin-top: 10px;
+}
+
+.modal-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px rgba(220, 20, 60, 0.3);
+}
+
+/* Clean logo styling - matching GuestPage */
+
+/* Responsive Design - Matching GuestPage */
+@media (max-width: 768px) {
+  .login-page {
+    padding: 1rem;
+  }
+  
+  .login-card {
+    padding: 2rem;
+    max-width: 100%;
+  }
+  
+  .login-title {
+    font-size: 2rem;
+  }
+  
+  .role-btn {
+    width: 100%;
+    max-width: 280px;
+  }
+}
+
+@media (max-width: 480px) {
+  .login-page {
+    padding: 1rem;
+  }
+  
+  .login-card {
+    padding: 1.5rem;
+  }
+  
+  .login-title {
+    font-size: 1.6rem;
+  }
+  
+  .login-logo {
+    width: 80px;
+    height: 80px;
+  }
+  
+  .role-btn {
+    padding: 0.7rem 1rem;
+    font-size: 0.85rem;
+    max-width: 220px;
+  }
+  
+  .modal-card {
+    padding: 1.5rem;
+    max-height: 95vh;
+    margin: 1rem;
+  }
+  
+  .modal-title {
+    font-size: 1.4rem;
+    margin-bottom: 0.8rem;
+  }
+  
+  .auth-form {
+    gap: 10px;
+  }
+  
+  .form-field input {
+    padding: 10px 14px;
+  }
+}
+
+/* Enhanced styles for the role-selection login page - Clean White Design */
+.login-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #ffffff;
+  padding: 24px;
+  position: relative;
+  overflow: hidden;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* Clean background - matching GuestPage */
+
+.login-card {
+  background: #ffffff;
+  border-radius: 16px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+  border: 1px solid #e5e7eb;
+  padding: 2rem;
+  width: 100%;
+  max-width: 500px;
+  position: relative;
+  z-index: 10;
+  transition: box-shadow 180ms ease, transform 180ms ease;
+  cursor: default;
+}
+
+/* Removed gradient line on top of card */
+
+.login-card:hover {
+  transform: translateY(-6px) scale(1.01);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.12);
+}
+
+/* Removed colored side line on the card */
+
+/* Tribal border pattern is now defined above */
+
+.login-header {
+  text-align: center;
+  margin-bottom: 24px;
+  position: relative;
+}
+
+.login-title {
+  font-size: 2rem;
+  font-weight: 800;
+  color: var(--tribal-black);
+  margin-bottom: 0.8rem;
+  position: relative;
+  text-align: center;
+}
+
+.login-card:hover .login-title {
+  filter: none;
+}
+
+.login-title::after {
+  content: '';
+  position: absolute;
+  bottom: -12px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 80px;
+  height: 3px;
+  background: var(--primary-red);
+  border-radius: 2px;
+}
+
+.login-subtitle {
+  font-size: 1.1rem;
+  color: var(--text-dark);
+  max-width: 600px;
+  margin: 0 auto;
+  line-height: 1.6;
+  opacity: 0.8;
+  font-weight: 500;
+}
+
+.login-logo-wrap {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 16px;
+  position: relative;
+}
+
+.login-logo {
+  width: 110px;
+  height: 110px;
+  object-fit: cover;
+  border-radius: 50%;
+  border: 2px solid #e5e7eb;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+  transition: none;
+  position: relative;
+}
+
+.login-logo::before {
+  content: '';
+  position: absolute;
+  top: -3px;
+  left: -3px;
+  right: -3px;
+  bottom: -3px;
+  border-radius: 50%;
+  background: var(--tribal-gradient);
+  z-index: -1;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.login-logo:hover {
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.12);
+}
+
+.login-logo:hover::before {
+  opacity: 1;
+}
+
+.login-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center; /* center the stacked buttons */
+}
+
+.role-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 0.875rem 1.25rem;
+  border-radius: 12px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 1rem;
+  width: 100%;
+  max-width: 280px;
+  position: relative;
+  overflow: hidden;
+  transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+  margin: 0.3rem 0;
+  text-transform: none;
+  letter-spacing: 0.2px;
+}
+
+/* remove sheen effect */
+
+.role-btn__icon {
+  display: inline-flex;
+  font-size: 20px;
+  filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.4));
+  transition: transform 0.3s ease;
+}
+
+.role-btn:hover .role-btn__icon {
+  transform: scale(1.1) rotate(5deg);
+}
+
+.role-btn--primary {
+  background: #ffffff;
+  color: var(--primary-red);
+  border-color: var(--primary-red);
+}
+
+.role-btn--primary:hover:not(:disabled) {
+  background: #fff5f5;
+  border-color: var(--secondary-red);
+  color: var(--secondary-red);
+}
+
+.role-btn--secondary {
+  background: #ffffff;
+  color: var(--primary-red);
+  border-color: var(--primary-red);
+}
+
+.role-btn--secondary:hover:not(:disabled) {
+  background: #fff5f5;
+  border-color: var(--secondary-red);
+  color: var(--secondary-red);
+}
+
+/* New: role switcher and inline forms (modern, no gradients) */
+.role-switcher {
+  display: inline-flex;
+  background: #f3f4f6;
+  border-radius: 12px;
+  padding: 4px;
+  gap: 6px;
+  margin: 6px auto 18px;
+}
+
+.switcher-btn {
+  border: none;
+  background: transparent;
+  color: #374151;
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.switcher-btn.is-active {
+  background: #111827;
+  color: #ffffff;
+}
+
+.inline-forms {
+  padding: 8px 0 0;
+}
+
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.form-field label {
+  font-size: 14px;
+  color: #374151;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.form-field input {
+  border: 2px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 12px 16px;
+  font-size: 15px;
+  outline: none;
+  background: #ffffff;
+  transition: all 0.3s ease;
+  font-weight: 500;
+}
+
+.form-field input:focus {
+  border-color: #dc2626;
+  box-shadow: 
+    0 0 0 3px rgba(220, 38, 38, 0.15),
+    0 4px 12px rgba(220, 38, 38, 0.1);
+  transform: translateY(-1px);
+}
+
+/* Forgot Password Styles */
+.form-header {
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+.form-header h4 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--primary-red);
+  margin: 0 0 8px 0;
+}
+
+.form-header p {
+  font-size: 0.95rem;
+  color: var(--text-dark);
+  margin: 0;
+  opacity: 0.8;
+}
+
+.form-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: center;
+}
+
+.forgot-password-btn {
+  background: transparent;
+  border: none;
+  color: var(--primary-red);
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  text-decoration: underline;
+  padding: 4px 0;
+  transition: color 0.2s ease;
+  margin-top: 4px;
+}
+
+.forgot-password-btn:hover {
+  color: var(--secondary-red);
+}
+
+.form-message {
+  padding: 12px 16px;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  margin-bottom: 16px;
+  text-align: center;
+}
+
+.form-message.success {
+  background: rgba(245, 158, 11, 0.1);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  color: var(--tribal-gold);
+}
+
+.form-message.error {
+  background: rgba(220, 38, 38, 0.1);
+  border: 1px solid rgba(220, 38, 38, 0.3);
+  color: var(--primary-red);
+}
+
+/* Google Login Button Styles */
+.google-login-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 20px;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: #ffffff;
+  color: #374151;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease;
+  width: 100%;
+  max-width: 300px;
+  margin: 0.3rem 0;
+}
+
+.google-login-btn:hover:not(:disabled) {
+  border-color: #d1d5db;
+  background: #f9fafb;
+}
+
+.google-login-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Login Button Styles */
+.login-btn {
+  background: var(--primary-red);
+  border: 1px solid var(--primary-red);
+  border-radius: 12px;
+  color: white;
+  font-size: 15px;
+  font-weight: 600;
+  padding: 12px 24px;
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease;
+  width: 100%;
+  max-width: 300px;
+  margin: 0.3rem 0;
+}
+
+.login-btn:hover:not(:disabled) {
+  background: var(--secondary-red);
+  border-color: var(--secondary-red);
+}
+
+.login-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Auth Divider */
+.auth-divider {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  max-width: 300px;
+  margin: 6px 0;
+}
+
+.auth-divider::before,
+.auth-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: #e5e7eb;
+}
+
+.auth-divider span {
+  padding: 0 16px;
+  color: #6b7280;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+/* Responsive adjustments for forgot password */
+@media (max-width: 480px) {
+  .form-header h4 {
+    font-size: 1.3rem;
+  }
+  
+  .form-header p {
+    font-size: 0.9rem;
+  }
+  
+  .form-actions {
+    gap: 10px;
+  }
+}

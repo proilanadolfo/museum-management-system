@@ -1,0 +1,417 @@
+/* Dashboard Layout Styles - Used by DashboardLayout component */
+/* Note: Sidebar styles are in AdminSidebar.css, not here */
+
+/* Layout constants */
+:root {
+  --sidebar-expanded: 220px;
+  --sidebar-collapsed: 72px;
+}
+
+.dash-root {
+  min-height: 100vh;
+  display: block;
+  background: #f8f9fa;
+}
+
+.dash-root.closed { 
+  grid-template-columns: 72px 1fr; 
+}
+
+.dash-content { 
+  padding: 84px 22px 22px 22px; 
+  margin-left: var(--sidebar-expanded); 
+  transition: margin-left .25s ease; 
+}
+
+/* Toolbar/Topbar Styles */
+.topbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  z-index: 1000;
+  background: transparent; /* surface is the inner container */
+  animation: topbarFade .25s ease both;
+}
+
+.topbar::before { 
+  content: none; 
+  height: 0; 
+}
+
+.topbar.is-stuck { 
+  box-shadow: none; 
+}
+
+.topbar-inner {
+  position: fixed;
+  top: 10px;
+  left: 0;
+  right: 0;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px 10px 8px;
+  background: #ffffff; /* pure white background */
+  border: 1px solid #e9ecef; /* keep subtle border */
+  border-top: none; /* flush to very top */
+  border-radius: 0;
+  box-shadow: none; /* remove inner shadow */
+}
+
+.topbar-logo { 
+  display: flex; 
+  align-items: center; 
+  gap: 8px; 
+  font-weight: 700; 
+  color: var(--text-1); 
+  min-width: max-content; 
+}
+
+.topbar-logo img { 
+  width: 28px; 
+  height: 28px; 
+  border-radius: 8px; 
+  object-fit: cover; 
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1); 
+}
+
+.topbar-abbrev { 
+  font-weight: 700; 
+  color: #1f2937; 
+  letter-spacing: .2px; 
+}
+
+.topbar-title { 
+  font-size: 16px; 
+  letter-spacing: .2px; 
+  color: #1f2937; 
+  font-weight: 700; 
+}
+
+.topbar-profile { 
+  display: flex; 
+  align-items: center; 
+  gap: 10px; 
+  color: #374151; 
+  font-weight: 600; 
+}
+
+/* Burger button */
+.topbar-hamburger {
+  background: transparent;
+  border: none;
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.topbar-hamburger:focus { 
+  outline: none; 
+}
+
+/* Topbar Search */
+.topbar-search { 
+  position: absolute; 
+  left: 50%; 
+  transform: translateX(-50%); 
+}
+
+.topbar-search .search-toolbar {
+  background: #ffffff;
+  border: none; /* remove border */
+  border-radius: 12px;
+  padding: 8px 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  box-shadow: none; /* no shadow */
+}
+
+.topbar-search .search-field {
+  position: relative;
+  width: 200px;
+  transition: width .3s ease;
+}
+
+.topbar-search:hover .search-field,
+.topbar-search:focus-within .search-field { 
+  width: 400px; 
+}
+
+.topbar-search .search-input-pill {
+  width: 100%;
+  padding: 10px 36px 10px 14px;
+  background: #f8f9fb;
+  border: none; /* remove input border */
+  border-radius: 999px;
+  outline: none;
+  font-size: 14px;
+  color: var(--text-1);
+  transition: box-shadow .2s ease, border-color .2s ease;
+}
+
+.topbar-search .search-input-pill:focus {
+  border-color: var(--primary-1);
+  box-shadow: 0 0 0 3px rgba(220, 20, 60, 0.12);
+}
+
+.topbar-search .search-icon-left { 
+  display: none; 
+}
+
+.topbar-search .search-icon-right {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #6c757d;
+  font-size: 16px;
+}
+
+.topbar-search .toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.topbar-search .clear-btn {
+  background: #f1f3f5;
+  border: 1px solid #e9ecef;
+  color: #495057;
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.topbar-search .clear-btn:hover { 
+  background: #e9ecef; 
+}
+
+@keyframes topbarFade {
+  from { 
+    opacity: 0; 
+    transform: translateY(-8px); 
+  }
+  to { 
+    opacity: 1; 
+    transform: translateY(0); 
+  }
+}
+
+/* Responsive Design */
+@media (max-width: 900px) {
+  /* Drawer mode: sidebar overlays content */
+  .modern-sidebar { 
+    transform: translateX(-100%); 
+    width: var(--sidebar-expanded); 
+    box-shadow: 0 10px 24px rgba(0,0,0,0.15); 
+  }
+  
+  body.sidebar-open .modern-sidebar { 
+    transform: translateX(0); 
+  }
+  
+  .dash-content { 
+    margin-left: 0; 
+  }
+  
+  /* Topbar: Keep search and notifications, make responsive */
+  .topbar-inner { 
+    padding: 10px 12px; 
+    gap: 8px; 
+  }
+  
+  .topbar-logo { 
+    flex: 0 0 auto; 
+  }
+  
+  .topbar-title { 
+    display: none; /* Hide title text on mobile, keep logo */
+  }
+  
+  .topbar-abbrev { 
+    display: none; /* Hide BSC text on mobile */
+  }
+  
+  /* Make search bar responsive */
+  .topbar-search { 
+    position: static; 
+    transform: none; 
+    flex: 1; 
+    min-width: 0; 
+  }
+  
+  .topbar-search .search-field { 
+    width: 100%; 
+    max-width: 200px; 
+  }
+  
+  .topbar-search:hover .search-field,
+  .topbar-search:focus-within .search-field { 
+    width: 100%; 
+    max-width: 300px; 
+  }
+  
+  /* Adjust notification button size */
+  .topbar-inner button[aria-label="Notifications"] { 
+    width: 36px; 
+    height: 36px; 
+    flex-shrink: 0;
+  }
+  
+  /* Adjust search results panel position for mobile */
+  .dash-content { 
+    padding-top: 76px; 
+  }
+}
+
+@media (max-width: 768px) {
+  /* Further mobile optimizations */
+  .topbar-inner { 
+    height: 50px; 
+    padding: 8px 10px; 
+    gap: 6px; 
+  }
+  
+  .topbar-logo img { 
+    width: 24px; 
+    height: 24px; 
+  }
+  
+  .topbar-hamburger { 
+    width: 28px; 
+    height: 28px; 
+    font-size: 16px; 
+  }
+  
+  /* Search bar adjustments */
+  .topbar-search { 
+    flex: 1; 
+    min-width: 0; 
+  }
+  
+  .topbar-search .search-field { 
+    max-width: 150px; 
+  }
+  
+  .topbar-search:hover .search-field,
+  .topbar-search:focus-within .search-field { 
+    max-width: 250px; 
+  }
+  
+  .topbar-search .search-input-pill { 
+    padding: 8px 32px 8px 12px; 
+    font-size: 13px; 
+  }
+  
+  /* Notification button */
+  .topbar-inner button[aria-label="Notifications"] { 
+    width: 34px; 
+    height: 34px; 
+  }
+  
+  /* Content adjustments */
+  .dash-content { 
+    padding-top: 70px; 
+    padding-left: 12px; 
+    padding-right: 12px; 
+  }
+}
+
+@media (max-width: 480px) {
+  /* Extra small screens */
+  .topbar-inner { 
+    height: 48px; 
+    padding: 6px 8px; 
+    gap: 4px; 
+  }
+  
+  .topbar-logo img { 
+    width: 22px; 
+    height: 22px; 
+  }
+  
+  .topbar-hamburger { 
+    width: 26px; 
+    height: 26px; 
+    font-size: 14px; 
+  }
+  
+  /* Search bar smaller on very small screens */
+  .topbar-search { 
+    flex: 1; 
+    min-width: 0; 
+  }
+  
+  .topbar-search .search-field { 
+    max-width: 120px; 
+  }
+  
+  .topbar-search:hover .search-field,
+  .topbar-search:focus-within .search-field { 
+    max-width: 200px; 
+  }
+  
+  .topbar-search .search-input-pill { 
+    padding: 6px 28px 6px 10px; 
+    font-size: 12px; 
+  }
+  
+  .topbar-search .search-icon-right { 
+    right: 8px; 
+    font-size: 14px; 
+  }
+  
+  /* Notification button smaller */
+  .topbar-inner button[aria-label="Notifications"] { 
+    width: 32px; 
+    height: 32px; 
+  }
+  
+  .topbar-inner button[aria-label="Notifications"] svg { 
+    width: 16px; 
+    height: 16px; 
+  }
+  
+  .dash-content { 
+    padding-top: 68px; 
+    padding-left: 8px; 
+    padding-right: 8px; 
+  }
+}
+
+/* Search results panel responsive */
+@media (max-width: 900px) {
+  .search-results-panel {
+    left: 12px !important;
+    right: 12px !important;
+    width: auto !important;
+    max-width: none !important;
+    top: 76px !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .search-results-panel {
+    left: 12px !important;
+    right: 12px !important;
+    top: 70px !important;
+  }
+  
+  /* Notifications dropdown responsive */
+  .notifications-dropdown {
+    right: 12px !important;
+    left: 12px !important;
+    width: auto !important;
+    max-width: none !important;
+    top: 70px !important;
+  }
+}
+

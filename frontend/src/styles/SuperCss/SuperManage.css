@@ -1,0 +1,419 @@
+/* Super Manage Styles - Admin Management */
+
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Inter:wght@400;600;700&display=swap');
+
+:root {
+  --tribal-red: #DC143C;
+  --text-dark: #1A1A1A;
+  --pure-white: #FFFFFF;
+  --warm-cream: #FFF8DC;
+}
+
+.manage-header-actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  position: relative;
+  z-index: 10 !important;
+  pointer-events: auto !important;
+  isolation: isolate;
+}
+
+.add-admin-btn {
+  padding: 12px 24px;
+  background: linear-gradient(135deg, var(--tribal-red), #B22222);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer !important;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  pointer-events: auto !important;
+  position: relative !important;
+  z-index: 99999 !important;
+  isolation: isolate;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.add-admin-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(220, 20, 60, 0.3);
+}
+
+.error-message {
+  background: rgba(220, 20, 60, 0.1);
+  border: 1px solid rgba(220, 20, 60, 0.3);
+  color: #dc143c;
+  padding: 12px 16px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  font-size: 14px;
+}
+
+.success-message {
+  background: rgba(255, 215, 0, 0.1);
+  border: 1px solid rgba(255, 215, 0, 0.3);
+  color: #daa520;
+  padding: 12px 16px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+/* Admin table */
+.admin-table { 
+  background: var(--pure-white); 
+  border-radius: 16px; 
+  box-shadow: 0 8px 30px rgba(220, 20, 60, 0.1); 
+  border: 1px solid rgba(220, 20, 60, 0.1); 
+  overflow: hidden;
+  position: relative;
+  z-index: 4 !important;
+  pointer-events: auto !important;
+  isolation: isolate;
+}
+
+.table-header { 
+  display: grid; 
+  grid-template-columns: 1fr 1fr 1fr 1fr 1fr; 
+  padding: 16px; 
+  background: var(--warm-cream); 
+  font-weight: 600; 
+  color: var(--text-dark); 
+}
+
+.table-row { 
+  display: grid; 
+  grid-template-columns: 1fr 1fr 1fr 1fr 1fr; 
+  padding: 16px; 
+  border-bottom: 1px solid rgba(220, 20, 60, 0.1); 
+  align-items: center;
+  position: relative;
+  z-index: 5 !important;
+  pointer-events: auto !important;
+  isolation: isolate;
+}
+
+.table-row:hover { 
+  background: rgba(220, 20, 60, 0.05); 
+}
+
+.table-row:last-child { 
+  border-bottom: none; 
+}
+
+.empty-message {
+  grid-column: 1 / -1;
+  text-align: center;
+  color: #666;
+  padding: 20px;
+}
+
+/* Admin table content styling */
+.admin-username { 
+  font-weight: 600; 
+  color: var(--text-dark); 
+}
+
+.admin-email { 
+  color: var(--text-dark); 
+  opacity: 0.8; 
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: help;
+}
+
+.admin-created { 
+  color: var(--text-dark); 
+  opacity: 0.7; 
+  font-size: 14px; 
+}
+
+/* Status badges */
+.status-badge { 
+  display: inline-block; 
+  padding: 6px 12px; 
+  border-radius: 20px; 
+  font-weight: 600; 
+  font-size: 12px; 
+  text-transform: uppercase; 
+}
+
+.status-active { 
+  background: rgba(255, 140, 0, 0.15); 
+  color: #B8860B; 
+  border: 1px solid rgba(255, 140, 0, 0.3); 
+}
+
+.status-inactive { 
+  background: rgba(239, 68, 68, 0.15); 
+  color: #dc2626; 
+  border: 1px solid rgba(239, 68, 68, 0.3); 
+}
+
+/* Action buttons */
+.actions { 
+  display: flex; 
+  gap: 8px; 
+  align-items: center; 
+  min-width: 200px;
+  justify-content: flex-start;
+  position: relative;
+  z-index: 15 !important;
+  pointer-events: auto !important;
+  isolation: isolate;
+}
+
+.edit-btn, .delete-btn { 
+  padding: 6px 12px; 
+  border: none; 
+  border-radius: 8px; 
+  font-size: 12px; 
+  font-weight: 500; 
+  cursor: pointer !important; 
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+  pointer-events: auto !important;
+  position: relative !important;
+  z-index: 99999 !important;
+  isolation: isolate;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.edit-btn { 
+  background: rgba(59, 130, 246, 0.1); 
+  color: #3b82f6; 
+  border: 1px solid rgba(59, 130, 246, 0.2);
+}
+
+.edit-btn:hover { 
+  background: rgba(59, 130, 246, 0.2); 
+  transform: translateY(-1px);
+}
+
+.delete-btn { 
+  background: #dc3545;
+  color: white;
+  border: 1px solid #dc3545;
+}
+
+.delete-btn:hover { 
+  background: #c82333; 
+  transform: translateY(-1px);
+}
+
+.edit-btn:disabled, .delete-btn:disabled { 
+  opacity: 0.5; 
+  cursor: not-allowed; 
+  transform: none;
+}
+
+/* Modal */
+.modal-overlay { 
+  position: fixed !important; 
+  top: 0 !important; 
+  left: 0 !important; 
+  right: 0 !important; 
+  bottom: 0 !important; 
+  background: rgba(0, 0, 0, 0.6) !important; 
+  display: flex !important; 
+  align-items: center !important; 
+  justify-content: center !important; 
+  z-index: 999999 !important; 
+  pointer-events: auto !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+.modal-content { 
+  background: var(--pure-white) !important; 
+  border-radius: 16px !important; 
+  box-shadow: 0 8px 30px rgba(220, 20, 60, 0.1) !important; 
+  border: 1px solid rgba(220, 20, 60, 0.1) !important; 
+  width: 90% !important; 
+  max-width: 500px !important; 
+  max-height: 90vh !important; 
+  overflow-y: auto !important; 
+  animation: slideUp 0.4s ease !important; 
+  position: relative !important; 
+  z-index: 1000000 !important;
+  pointer-events: auto !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  display: block !important;
+}
+
+.modal-content form {
+  pointer-events: auto !important;
+  position: relative;
+  z-index: 1;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px;
+  border-bottom: 1px solid #eee;
+}
+
+.modal-header h3 {
+  margin: 0;
+  color: #1a1a1a;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.modal-header button {
+  background: none;
+  border: none;
+  font-size: 24px;
+  color: #666;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  pointer-events: auto;
+  position: relative;
+  z-index: 10001;
+}
+
+.modal-header button:hover {
+  background: rgba(108, 117, 125, 0.12);
+  color: #343a40;
+}
+
+.modal-body {
+  padding: 24px;
+  position: relative;
+  z-index: 1;
+  pointer-events: auto;
+}
+
+.form-group {
+  margin-bottom: 20px;
+  position: relative;
+  z-index: 1;
+  pointer-events: auto;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 6px;
+  color: #1a1a1a;
+  font-weight: 500;
+  font-size: 14px;
+  pointer-events: auto;
+  position: relative;
+  z-index: 1;
+}
+
+.form-group input {
+  width: 100%;
+  padding: 12px 16px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  font-size: 14px;
+  background: #ffffff;
+  color: #1a1a1a;
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  pointer-events: auto !important;
+  position: relative;
+  z-index: 1;
+}
+
+.form-group input:focus {
+  border-color: var(--tribal-red);
+  box-shadow: 0 0 0 3px rgba(220, 20, 60, 0.12);
+}
+
+.modal-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  margin-top: 24px;
+}
+
+.modal-actions button {
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s ease;
+  pointer-events: auto !important;
+  position: relative;
+  z-index: 10001 !important;
+}
+
+.modal-actions button[type="button"] {
+  background: rgba(220, 20, 60, 0.1);
+  color: #1a1a1a;
+}
+
+.modal-actions button[type="button"]:hover {
+  background: rgba(220, 20, 60, 0.2);
+}
+
+.modal-actions button[type="submit"] {
+  background: linear-gradient(135deg, var(--tribal-red), #B22222);
+  color: white;
+}
+
+.modal-actions button[type="submit"]:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(220, 20, 60, 0.3);
+}
+
+.modal-actions button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .table-header, .table-row { 
+    grid-template-columns: 1fr 1fr 1fr 1fr 1fr; 
+    gap: 8px; 
+    font-size: 12px;
+  }
+  
+  .admin-table { 
+    overflow-x: auto; 
+  }
+  
+  .dash-header { 
+    flex-direction: column; 
+    align-items: flex-start; 
+    gap: 16px; 
+  }
+  
+  .actions {
+    flex-direction: column;
+    gap: 4px;
+    min-width: auto;
+  }
+}
+

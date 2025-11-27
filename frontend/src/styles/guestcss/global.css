@@ -1,0 +1,238 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Inter:wght@400;600;700&display=swap');
+
+/* Global styles for GuestPage components - Matching Admin/SuperAdmin Theme */
+:root {
+  /* Tribal Theme Colors - Match Admin/SuperAdmin exactly */
+  --primary-1: #DC143C;            /* Crimson Red - main brand color */
+  --primary-2: #B22222;            /* Fire Brick - secondary red */
+  --bright-orange: #FF8C00;        /* Dark Orange - vibrant orange */
+  --warm-yellow: #FFD700;          /* Gold - bright yellow */
+  --deep-yellow: #DAA520;          /* Goldenrod - deeper yellow */
+  --tribal-black: #2F2F2F;         /* Dark Gray/Black - structural elements */
+  --pure-white: #FFFFFF;           /* Pure White - clean background */
+  --soft-white: #F8F8F8;           /* Ghost White - subtle background */
+  --warm-cream: #FFF8DC;           /* Cornsilk - warm accent */
+  --text-dark: #1A1A1A;            /* Almost Black - text */
+  
+  /* Additional aliases for compatibility */
+  --primary-red: #DC143C;
+  --secondary-red: #B22222;
+  --tribal-red: #DC143C;
+  --tribal-yellow: #FFD700;
+  --tribal-gold: #DAA520;
+  
+  /* Gradients - Match Admin/SuperAdmin */
+  --primary-gradient: linear-gradient(135deg, var(--primary-1), var(--primary-2));
+  --accent-gradient: linear-gradient(45deg, var(--bright-orange), var(--warm-yellow));
+  --tribal-gradient: linear-gradient(135deg, var(--primary-1), var(--bright-orange), var(--warm-yellow));
+  --warm-gradient: linear-gradient(135deg, var(--warm-cream), var(--pure-white));
+}
+
+.guest-page {
+  font-family: Poppins, Inter, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, 'Helvetica Neue', Arial, 'Noto Sans', 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol';
+  line-height: 1.7;
+  color: var(--text-dark);
+  background: var(--pure-white);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+/* Smooth scrolling for the entire page */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Reset some default styles */
+.guest-page * {
+  box-sizing: border-box;
+}
+
+.guest-page h1, .guest-page h2, .guest-page h3, .guest-page h4, .guest-page h5, .guest-page h6 {
+  margin: 0 0 1rem 0;
+  font-weight: 600;
+  color: var(--text-dark);
+}
+
+.guest-page p {
+  margin: 0 0 1rem 0;
+  color: var(--text-dark);
+}
+
+.guest-page ul, .guest-page ol {
+  margin: 0 0 1rem 0;
+  padding-left: 1.5rem;
+}
+
+.guest-page a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.guest-page button {
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.guest-page input, .guest-page select, .guest-page textarea {
+  font-family: inherit;
+}
+
+/* Utility classes */
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 2rem;
+}
+
+.section-title {
+  font-size: clamp(2rem, 4vw, 3.5rem);
+  font-weight: 300;
+  text-align: center;
+  margin-bottom: 2rem;
+  color: var(--text-dark);
+  position: relative;
+  letter-spacing: -1px;
+}
+
+.section-title::after {
+  content: '';
+  position: absolute;
+  bottom: -15px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100px;
+  height: 3px;
+  background: linear-gradient(90deg, var(--primary-1), var(--warm-yellow));
+  border-radius: 2px;
+}
+
+.section-subtitle {
+  font-size: 1.1rem;
+  color: var(--text-dark);
+  text-align: center;
+  max-width: 600px;
+  margin: 0 auto 2rem;
+  line-height: 1.6;
+  opacity: 0.8;
+}
+
+/* Modern Card Styles */
+.modern-card {
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 4px 20px rgba(220, 20, 60, 0.1);
+  border: 1px solid rgba(220, 20, 60, 0.1);
+  transition: all 0.3s ease;
+}
+
+.modern-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 30px rgba(220, 20, 60, 0.15);
+}
+
+/* Button Styles */
+.btn-primary {
+  background: var(--primary-gradient);
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(220, 20, 60, 0.3);
+}
+
+.btn-secondary {
+  background: transparent;
+  color: var(--primary-1);
+  border: 2px solid var(--primary-1);
+  padding: 10px 22px;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.btn-secondary:hover {
+  background: var(--primary-1);
+  color: white;
+  transform: translateY(-2px);
+}
+
+/* Metrics Cards */
+.metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1.5rem;
+  margin: 2rem 0;
+}
+
+.metric-card {
+  background: white;
+  padding: 1.5rem;
+  border-radius: 12px;
+  box-shadow: 0 2px 10px rgba(220, 20, 60, 0.08);
+  border-left: 4px solid var(--bright-orange);
+  transition: all 0.3s ease;
+}
+
+.metric-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 20px rgba(220, 20, 60, 0.12);
+}
+
+.metric-value {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--primary-1);
+  margin-bottom: 0.5rem;
+}
+
+.metric-label {
+  color: var(--text-dark);
+  font-weight: 500;
+  margin-bottom: 0.5rem;
+}
+
+.metric-change {
+  font-size: 0.9rem;
+  color: var(--bright-orange);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* Responsive utilities */
+@media (max-width: 768px) {
+  .container {
+    padding: 0 1rem;
+  }
+  
+  .section-title {
+    font-size: 2rem;
+  }
+  
+  .metrics-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .section-title {
+    font-size: 1.8rem;
+  }
+  
+  .metric-card {
+    padding: 1rem;
+  }
+  
+  .metric-value {
+    font-size: 1.5rem;
+  }
+}

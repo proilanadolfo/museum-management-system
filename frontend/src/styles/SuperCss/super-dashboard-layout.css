@@ -1,0 +1,265 @@
+/* Super Admin Dashboard Layout Styles - Used by DashboardLayout component */
+/* Note: Sidebar styles are in SuperAdminSidebar.css, not here */
+
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Inter:wght@400;600;700&display=swap');
+
+:root {
+  /* Tribal Theme Colors */
+  --primary-1: #DC143C;
+  --primary-2: #B22222;
+  --bright-orange: #FF8C00;
+  --warm-yellow: #FFD700;
+  --deep-yellow: #DAA520;
+  --tribal-black: #2F2F2F;
+  --pure-white: #FFFFFF;
+  --soft-white: #F8F8F8;
+  --warm-cream: #FFF8DC;
+  --text-dark: #1A1A1A;
+  
+  /* Layout constants */
+  --sidebar-expanded: 260px;
+  --sidebar-collapsed: 72px;
+}
+
+body { 
+  font-family: Poppins, Inter, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, 'Helvetica Neue', Arial, 'Noto Sans', 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol'; 
+}
+
+.dash-root {
+  min-height: 100vh;
+  display: block;
+  background: #f8f9fa;
+}
+
+.dash-root.closed { 
+  grid-template-columns: 72px 1fr; 
+}
+
+.dash-content { 
+  padding: 22px; 
+  padding-top: 84px; 
+  margin-left: var(--sidebar-expanded);
+  transition: margin-left 0.25s ease;
+  position: relative;
+  z-index: 1 !important;
+  pointer-events: auto !important;
+  isolation: isolate;
+}
+
+body.sidebar-closed .dash-content { 
+  margin-left: var(--sidebar-collapsed); 
+}
+
+.dash-section { 
+  max-width: 1100px; 
+  margin-inline: auto;
+  position: relative;
+  z-index: 2 !important;
+  pointer-events: auto !important;
+  isolation: isolate;
+}
+
+.dash-title { 
+  margin: 0; 
+  color: var(--text-dark); 
+  font-size: 24px; 
+}
+
+.dash-subtitle { 
+  margin: 4px 0 18px; 
+  color: var(--text-dark); 
+  opacity: 0.8; 
+}
+
+/* Dashboard header */
+.dash-header { 
+  display: flex; 
+  justify-content: space-between; 
+  align-items: center; 
+  margin-bottom: 24px;
+  position: relative;
+  z-index: 3 !important;
+  pointer-events: auto !important;
+  isolation: isolate;
+}
+
+.user-info { 
+  display: flex; 
+  align-items: center; 
+  gap: 8px; 
+  color: var(--text-dark); 
+  font-weight: 600; 
+}
+
+.user-icon { 
+  font-size: 18px; 
+}
+
+/* Topbar */
+.super-topbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 50px;
+  z-index: 100;
+  background: transparent;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.super-topbar * {
+  pointer-events: auto;
+}
+
+.super-topbar-inner {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 50px;
+  max-height: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 12px 0 8px;
+  background: #ffffff;
+  border-bottom: 1px solid #e9ecef;
+  border-radius: 0;
+  box-shadow: none;
+  z-index: 100;
+  pointer-events: auto;
+  overflow: hidden;
+}
+
+.super-topbar-logo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  color: var(--text-dark);
+  min-width: max-content;
+}
+
+.super-topbar-logo img {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  object-fit: cover;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.super-topbar-abbrev {
+  font-weight: 700;
+  color: #1f2937;
+  letter-spacing: .2px;
+}
+
+.super-topbar-title {
+  font-size: 16px;
+  letter-spacing: .2px;
+  color: #1f2937;
+  font-weight: 700;
+}
+
+.super-topbar-hamburger {
+  background: transparent;
+  border: none;
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 18px;
+}
+
+.super-topbar-hamburger:focus {
+  outline: none;
+}
+
+@media (max-width: 900px) {
+  .dash-content { 
+    margin-left: 0; 
+    padding-top: 76px; 
+  }
+  
+  .super-topbar-inner { 
+    padding: 10px 12px; 
+    gap: 8px; 
+  }
+  
+  .super-topbar-title { 
+    display: none; 
+  }
+  
+  .super-topbar-abbrev { 
+    display: none; 
+  }
+}
+
+@media (max-width: 768px) {
+  .super-topbar-inner { 
+    height: 50px; 
+    padding: 8px 10px; 
+    gap: 6px; 
+  }
+  
+  .super-topbar-logo img { 
+    width: 24px; 
+    height: 24px; 
+  }
+  
+  .super-topbar-hamburger { 
+    width: 28px; 
+    height: 28px; 
+    font-size: 16px; 
+  }
+  
+  .dash-content { 
+    padding-top: 70px; 
+    padding-left: 12px; 
+    padding-right: 12px; 
+  }
+  
+  .dash-section { 
+    padding: 16px; 
+  }
+  
+  .dash-header { 
+    flex-direction: column; 
+    align-items: flex-start; 
+    gap: 16px; 
+  }
+}
+
+@media (max-width: 480px) {
+  .super-topbar-inner { 
+    height: 48px; 
+    padding: 6px 8px; 
+    gap: 4px; 
+  }
+  
+  .super-topbar-logo img { 
+    width: 22px; 
+    height: 22px; 
+  }
+  
+  .super-topbar-hamburger { 
+    width: 26px; 
+    height: 26px; 
+    font-size: 14px; 
+  }
+  
+  .dash-content { 
+    padding-top: 68px; 
+    padding-left: 8px; 
+    padding-right: 8px; 
+  }
+  
+  .dash-section { 
+    padding: 12px; 
+  }
+}
+

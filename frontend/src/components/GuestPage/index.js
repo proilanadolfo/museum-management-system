@@ -1,0 +1,6 @@
+export { default as Navbar } from './Navbar'
+export { default as Home } from './Home'
+export { default as Gallery } from './Gallery'
+export { default as Booking } from './Booking'
+export { default as Contact } from './Contact'
+export { default } from './GuestPage'

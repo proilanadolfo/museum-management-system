@@ -1,0 +1,409 @@
+/* Booking Status Modal */
+.booking-status-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  padding: 2rem;
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.booking-status-modal-content {
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  max-width: 700px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  position: relative;
+  animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.booking-status-modal-content .modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.5rem 2rem;
+  border-bottom: 1px solid rgba(220, 20, 60, 0.1);
+  position: sticky;
+  top: 0;
+  background: white;
+  z-index: 10;
+  border-radius: 16px 16px 0 0;
+}
+
+.booking-status-modal-content .modal-header h2 {
+  margin: 0;
+  color: var(--text-dark, #2c3e50);
+  font-size: 1.5rem;
+}
+
+.modal-close-btn {
+  background: none;
+  border: none;
+  font-size: 2rem;
+  cursor: pointer;
+  color: #999;
+  padding: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: all 0.2s ease;
+}
+
+.modal-close-btn:hover {
+  background: rgba(220, 20, 60, 0.1);
+  color: var(--primary-red, #dc143c);
+}
+
+.booking-status-modal-content .modal-body {
+  padding: 2rem;
+}
+
+.modal-subtitle {
+  margin: 0 0 1.5rem 0;
+  color: #666;
+  font-size: 0.95rem;
+}
+
+/* Use existing status form styles from Booking.css */
+.status-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.status-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.status-form-group label {
+  font-weight: 600;
+  color: var(--text-dark, #2c3e50);
+  font-size: 0.9rem;
+}
+
+.status-input {
+  padding: 0.75rem 1rem;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  font-size: 1rem;
+  transition: all 0.3s ease;
+}
+
+.status-input:focus {
+  outline: none;
+  border-color: var(--primary-red, #dc143c);
+  box-shadow: 0 0 0 3px rgba(220, 20, 60, 0.1);
+}
+
+.status-hint {
+  font-size: 0.85rem;
+  color: #666;
+  margin-top: 0.25rem;
+}
+
+.status-check-btn {
+  padding: 0.875rem 1.5rem;
+  background: var(--primary-red, #dc143c);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.status-check-btn:hover:not(:disabled) {
+  background: #b81234;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(220, 20, 60, 0.3);
+}
+
+.status-check-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.status-alert {
+  padding: 1rem;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.9rem;
+}
+
+.status-alert.error {
+  background: #fee;
+  color: #c33;
+  border: 1px solid #fcc;
+}
+
+.status-alert span {
+  font-size: 1.2rem;
+}
+
+.status-result {
+  margin-top: 2rem;
+  padding-top: 2rem;
+  border-top: 2px solid #e0e0e0;
+}
+
+.status-pill {
+  display: inline-block;
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
+  font-weight: 600;
+  font-size: 0.85rem;
+  margin-bottom: 1.5rem;
+}
+
+.status-pill.pending {
+  background: #fff3cd;
+  color: #856404;
+}
+
+.status-pill.confirmed {
+  background: #d4edda;
+  color: #155724;
+}
+
+.status-pill.cancelled {
+  background: #f8d7da;
+  color: #721c24;
+}
+
+.status-summary h4 {
+  margin: 0 0 1rem 0;
+  color: var(--text-dark, #2c3e50);
+  font-size: 1.25rem;
+}
+
+.status-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.status-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.status-detail-label {
+  font-size: 0.85rem;
+  color: #666;
+  font-weight: 500;
+}
+
+.status-detail-value {
+  font-size: 1rem;
+  color: var(--text-dark, #2c3e50);
+  font-weight: 600;
+}
+
+.status-notes {
+  grid-column: 1 / -1;
+}
+
+.status-updated {
+  font-size: 0.85rem;
+  color: #666;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid #e0e0e0;
+}
+
+.status-actions {
+  display: flex;
+  gap: 1rem;
+  margin-top: 1.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid #e0e0e0;
+}
+
+.status-action-btn {
+  padding: 0.75rem 1.5rem;
+  border: 2px solid #e0e0e0;
+  background: white;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.status-action-btn:hover:not(:disabled) {
+  border-color: var(--primary-red, #dc143c);
+  color: var(--primary-red, #dc143c);
+  transform: translateY(-2px);
+}
+
+.status-action-btn.primary {
+  background: var(--primary-red, #dc143c);
+  color: white;
+  border-color: var(--primary-red, #dc143c);
+}
+
+.status-action-btn.primary:hover:not(:disabled) {
+  background: #b81234;
+}
+
+.status-action-btn.danger {
+  border-color: #dc3545;
+  color: #dc3545;
+}
+
+.status-action-btn.danger:hover:not(:disabled) {
+  background: #dc3545;
+  color: white;
+}
+
+.status-action-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.status-manage-message {
+  padding: 1rem;
+  border-radius: 8px;
+  margin-top: 1rem;
+  font-size: 0.9rem;
+}
+
+.status-manage-message.success {
+  background: #d4edda;
+  color: #155724;
+}
+
+.status-manage-message.error {
+  background: #f8d7da;
+  color: #721c24;
+}
+
+.status-manage-form {
+  margin-top: 1.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid #e0e0e0;
+}
+
+.status-manage-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.status-manage-row.full {
+  grid-template-columns: 1fr;
+}
+
+.status-manage-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.status-manage-field label {
+  font-weight: 600;
+  color: var(--text-dark, #2c3e50);
+  font-size: 0.9rem;
+}
+
+.status-manage-field input,
+.status-manage-field select,
+.status-manage-field textarea {
+  padding: 0.75rem 1rem;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  font-size: 1rem;
+  transition: all 0.3s ease;
+}
+
+.status-manage-field input:focus,
+.status-manage-field select:focus,
+.status-manage-field textarea:focus {
+  outline: none;
+  border-color: var(--primary-red, #dc143c);
+  box-shadow: 0 0 0 3px rgba(220, 20, 60, 0.1);
+}
+
+.status-manage-hint {
+  font-size: 0.85rem;
+  margin-top: 0.25rem;
+}
+
+.status-manage-hint.available {
+  color: #16a34a;
+}
+
+.status-manage-hint.unavailable {
+  color: #dc143c;
+}
+
+.status-manage-actions {
+  margin-top: 1.5rem;
+  display: flex;
+  justify-content: flex-end;
+}
+
+@media (max-width: 768px) {
+  .booking-status-modal-overlay {
+    padding: 1rem;
+  }
+
+  .booking-status-modal-content {
+    max-height: 95vh;
+  }
+
+  .booking-status-modal-content .modal-header,
+  .booking-status-modal-content .modal-body {
+    padding: 1.5rem;
+  }
+
+  .status-detail-grid,
+  .status-manage-row {
+    grid-template-columns: 1fr;
+  }
+
+  .status-actions {
+    flex-direction: column;
+  }
+}
+
