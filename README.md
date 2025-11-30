@@ -24,15 +24,16 @@ Museum/
 
 ### Prerequisites
 - Node.js (v16 or higher)
-- MongoDB (running on localhost:27017)
+- MongoDB Atlas account (or local MongoDB)
 - npm or yarn
+- Git
 
 ### Installation
 
 1. **Clone the repository**
    ```bash
-   git clone <repository-url>
-   cd Museum
+   git clone https://github.com/proilanadolfo/museum-management-system.git
+   cd museum-management-system
    ```
 
 2. **Install Backend Dependencies**
@@ -47,25 +48,46 @@ Museum/
    npm install
    ```
 
+4. **Setup Environment Variables**
+   - Create a `.env` file in the `backend/` folder
+   - Copy the template from `SETUP_GUIDE.md` or see the example below
+   - **IMPORTANT**: The `.env` file is NOT included in the repository for security reasons
+   - You need to create your own `.env` file with your actual credentials
+
+   **Minimum required variables:**
+   ```env
+   PORT=5000
+   MONGO_URI_ADMIN=mongodb+srv://username:password@cluster-hostname/museum_admin?retryWrites=true&w=majority&appName=Cluster0
+   MONGO_URI_SUPERADMIN=mongodb+srv://username:password@cluster-hostname/museum_superadmin?retryWrites=true&w=majority&appName=Cluster0
+   MONGO_URI_BOOKINGS=mongodb+srv://username:password@cluster-hostname/museum_bookings?retryWrites=true&w=majority&appName=Cluster0
+   JWT_SECRET=your-secret-key-here
+   SESSION_SECRET=your-session-secret-here
+   FRONTEND_URL=http://localhost:5173
+   ```
+
+   See `SETUP_GUIDE.md` for complete environment variable list and detailed setup instructions.
+
 ### Running the Application
 
-1. **Start MongoDB**
-   - Make sure MongoDB is running on `localhost:27017`
-   - Or update the connection string in `backend/db.js`
-
-2. **Start the Backend Server**
+1. **Start the Backend Server**
    ```bash
    cd backend
-   npm run start
+   npm start
    ```
    The API will be available at `http://localhost:5000`
 
-3. **Start the Frontend Development Server**
+2. **Start the Frontend Development Server**
    ```bash
    cd frontend
    npm run dev
    ```
    The application will be available at `http://localhost:5173`
+
+3. **Access the Application**
+   - Open `http://localhost:5173` in your browser
+   - Use default credentials:
+     - Super Admin: `superadmin` / `admin123`
+     - Admin: `admin` / `admin123`
 
 ## 🎯 Features
 
@@ -158,6 +180,20 @@ This project is licensed under the MIT License.
 3. Commit your changes
 4. Push to the branch
 5. Create a Pull Request
+
+## 📚 Setup Documentation
+
+- **`SETUP_GUIDE.md`** - Complete setup guide for team members (includes environment variables)
+- **`MONGODB_ATLAS_SETUP.md`** - MongoDB Atlas configuration guide
+- **`GOOGLE_OAUTH_SETUP.md`** - Google OAuth integration setup
+- **`SEMAPHORE_SMS_SETUP.md`** - SMS notifications setup
+- **`GITHUB_PUSH_GUIDE.md`** - Guide for pushing to GitHub
+
+## ⚠️ Important Notes
+
+- **Environment Variables**: The `.env` file is NOT included in the repository. You must create your own `.env` file in the `backend/` folder. See `SETUP_GUIDE.md` for instructions.
+- **Database**: This project uses MongoDB Atlas (cloud database). You need to set up your own MongoDB Atlas account and connection strings.
+- **Security**: Never commit `.env` files or sensitive credentials to Git.
 
 ## 📞 Support
 

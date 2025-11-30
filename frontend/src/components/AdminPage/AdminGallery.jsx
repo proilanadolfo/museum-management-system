@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import Swal from 'sweetalert2'
 import '../../styles/AdminCss/gallery.css'
 
@@ -20,6 +20,7 @@ const AdminGallery = () => {
   const [galleryImage, setGalleryImage] = useState(null)
   const [galleryImagePreview, setGalleryImagePreview] = useState(null)
   const [galleryFormLoading, setGalleryFormLoading] = useState(false)
+  const [galleryEditVersion, setGalleryEditVersion] = useState(null)
 
   const [announcements, setAnnouncements] = useState([])
   const [announcementsLoading, setAnnouncementsLoading] = useState(false)
@@ -37,15 +38,16 @@ const AdminGallery = () => {
   const [announcementImage, setAnnouncementImage] = useState(null)
   const [announcementImagePreview, setAnnouncementImagePreview] = useState(null)
   const [announcementFormLoading, setAnnouncementFormLoading] = useState(false)
+  const [announcementEditVersion, setAnnouncementEditVersion] = useState(null)
 
-  const getAuthHeaders = () => {
+  const getAuthHeaders = useCallback(() => {
     const raw = localStorage.getItem('admin_token')
     const token =
       raw && raw !== 'null' && raw !== 'undefined' && raw.includes('.') ? raw : null
     return token
       ? { Authorization: `Bearer ${token}` }
       : {}
-  }
+  }, [])
 
   useEffect(() => {
     fetchGalleryItems()
@@ -61,15 +63,41 @@ const AdminGallery = () => {
           ...getAuthHeaders()
         }
       })
+      // Only redirect on 401 if we have a token (means token is invalid/expired)
+      // BUT: Don't logout immediately - might be a temporary issue
+      const token = getAuthHeaders().Authorization
+      if (response.status === 401 && token) {
+        // Show error instead of logging out
+        setGalleryError('Unauthorized: Please check your session or try refreshing the page')
+        setGalleryLoading(false)
+        return null
+      }
+      // If 401 and no token, just skip (component might be loading)
+      if (response.status === 401 && !token) {
+        return null
+      }
       if (response.ok) {
         const data = await response.json()
-        setGalleryItems(data.data || [])
+        const items = data.data || []
+        setGalleryItems(items)
+        return items
+      } else if (response.status === 404) {
+        // Gallery item not found - might have been deleted, refresh the list
+        setGalleryError('Gallery item not found. Refreshing list...')
+        // Refresh the gallery list after a short delay
+        setTimeout(() => {
+          fetchGalleryItems()
+        }, 1000)
+        return null
       } else {
-        setGalleryError('Failed to load gallery items')
+        const errorData = await response.json().catch(() => ({ message: 'Failed to load gallery items' }))
+        setGalleryError(errorData.message || 'Failed to load gallery items')
+        return null
       }
     } catch (error) {
       console.error('Fetch gallery error:', error)
       setGalleryError('An error occurred while loading gallery items')
+      return null
     } finally {
       setGalleryLoading(false)
     }
@@ -84,15 +112,40 @@ const AdminGallery = () => {
           ...getAuthHeaders()
         }
       })
+      // Only redirect on 401 if we have a token (means token is invalid/expired)
+      // BUT: Don't logout immediately - might be a temporary issue
+      const token = getAuthHeaders().Authorization
+      if (response.status === 401 && token) {
+        // Show error instead of logging out
+        setGalleryError('Unauthorized: Please check your session or try refreshing the page')
+        setGalleryLoading(false)
+        return null
+      }
+      // If 401 and no token, just skip (component might be loading)
+      if (response.status === 401 && !token) {
+        return null
+      }
       if (response.ok) {
         const data = await response.json()
-        setAnnouncements(data.data || [])
+        const list = data.data || []
+        setAnnouncements(list)
+        return list
+      } else if (response.status === 404) {
+        // Announcement not found - might have been deleted, refresh the list
+        setAnnouncementsError('Announcement not found. Refreshing list...')
+        setTimeout(() => {
+          fetchAnnouncements()
+        }, 1000)
+        return null
       } else {
-        setAnnouncementsError('Failed to load announcements')
+        const errorData = await response.json().catch(() => ({ message: 'Failed to load announcements' }))
+        setAnnouncementsError(errorData.message || 'Failed to load announcements')
+        return null
       }
     } catch (error) {
       console.error('Fetch announcements error:', error)
       setAnnouncementsError('An error occurred while loading announcements')
+      return null
     } finally {
       setAnnouncementsLoading(false)
     }
@@ -122,6 +175,10 @@ const AdminGallery = () => {
       formData.append('year', galleryFormData.year)
       formData.append('order', galleryFormData.order)
       formData.append('isActive', galleryFormData.isActive)
+      if (editingGalleryItem) {
+        const timestamp = galleryEditVersion || Date.now()
+        formData.append('clientTimestamp', timestamp.toString())
+      }
       
       if (galleryImage) {
         formData.append('image', galleryImage)
@@ -142,6 +199,42 @@ const AdminGallery = () => {
       })
 
       const result = await response.json()
+
+      if (response.status === 409) {
+        const message = result.message || 'Your edit is outdated. Another user saved first.'
+        setGalleryError(message)
+        Swal.fire({
+          title: 'Outdated Data',
+          text: message,
+          icon: 'warning',
+          confirmButtonColor: '#dc143c'
+        })
+        if (result.currentTimestamp) {
+          setGalleryEditVersion(result.currentTimestamp)
+        }
+        const latest = await fetchGalleryItems()
+        if (latest && editingGalleryItem) {
+          const refreshed = latest.find((item) => item._id === editingGalleryItem._id)
+          if (refreshed) {
+            setEditingGalleryItem(refreshed)
+            setGalleryFormData({
+              title: refreshed.title,
+              category: refreshed.category,
+              description: refreshed.description,
+              year: refreshed.year || '',
+              order: refreshed.order || 0,
+              isActive: refreshed.isActive
+            })
+            setGalleryImage(null)
+            setGalleryImagePreview(refreshed.image ? `http://localhost:5000${refreshed.image}` : null)
+            if (refreshed.updatedAt) {
+              setGalleryEditVersion(new Date(refreshed.updatedAt).getTime())
+            }
+          }
+        }
+        setGalleryFormLoading(false)
+        return
+      }
       
       if (response.ok) {
         const successMessage = editingGalleryItem
@@ -150,6 +243,9 @@ const AdminGallery = () => {
 
         setGallerySuccess(successMessage)
         await fetchGalleryItems()
+        if (result?.newTimestamp) {
+          setGalleryEditVersion(result.newTimestamp)
+        }
 
         // SweetAlert success for create/update gallery
         Swal.fire({
@@ -172,6 +268,7 @@ const AdminGallery = () => {
           setGalleryImage(null)
           setGalleryImagePreview(null)
           setGallerySuccess('')
+          setGalleryEditVersion(null)
         }, 1500)
       } else {
         const message = result.message || 'Failed to save gallery item'
@@ -220,12 +317,35 @@ const AdminGallery = () => {
     setGalleryLoading(true)
     setGalleryError('')
     try {
+      const targetItem = galleryItems.find((item) => item._id === id)
+      const clientTimestamp = targetItem?.updatedAt
+        ? new Date(targetItem.updatedAt).getTime()
+        : Date.now()
+
       const response = await fetch(`/api/gallery/${id}`, {
         method: 'DELETE',
         headers: {
+          'Content-Type': 'application/json',
           ...getAuthHeaders()
-        }
+        },
+        body: JSON.stringify({ clientTimestamp })
       })
+
+      const data = await response.json().catch(() => ({}))
+
+      if (response.status === 409) {
+        const message = data.message || 'Your edit is outdated. Another user saved first.'
+        setGalleryError(message)
+        Swal.fire({
+          title: 'Outdated Data',
+          text: message,
+          icon: 'warning',
+          confirmButtonColor: '#dc143c'
+        })
+        await fetchGalleryItems()
+        setGalleryLoading(false)
+        return
+      }
 
       if (response.ok) {
         const message = 'Gallery item deleted successfully!'
@@ -239,8 +359,18 @@ const AdminGallery = () => {
           confirmButtonColor: '#dc143c'
         })
         setTimeout(() => setGallerySuccess(''), 2000)
+      } else if (response.status === 404) {
+        // Item already deleted - just refresh the list
+        const message = 'Gallery item not found (may have been already deleted)'
+        setGalleryError(message)
+        await fetchGalleryItems()
+        Swal.fire({
+          title: 'Item Not Found',
+          text: message,
+          icon: 'info',
+          confirmButtonColor: '#dc143c'
+        })
       } else {
-        const data = await response.json()
         const message = data.message || 'Failed to delete gallery item'
         setGalleryError(message)
 
@@ -296,6 +426,10 @@ const AdminGallery = () => {
       formData.append('date', announcementFormData.date)
       formData.append('order', announcementFormData.order)
       formData.append('isActive', announcementFormData.isActive)
+      if (editingAnnouncement) {
+        const timestamp = announcementEditVersion || Date.now()
+        formData.append('clientTimestamp', timestamp.toString())
+      }
       
       if (announcementImage) {
         formData.append('image', announcementImage)
@@ -310,6 +444,41 @@ const AdminGallery = () => {
       })
 
       const result = await response.json()
+
+      if (response.status === 409) {
+        const message = result.message || 'Your edit is outdated. Another user saved first.'
+        setAnnouncementsError(message)
+        Swal.fire({
+          title: 'Outdated Data',
+          text: message,
+          icon: 'warning',
+          confirmButtonColor: '#dc143c'
+        })
+        if (result.currentTimestamp) {
+          setAnnouncementEditVersion(result.currentTimestamp)
+        }
+        const latest = await fetchAnnouncements()
+        if (latest && editingAnnouncement) {
+          const refreshed = latest.find((ann) => ann._id === editingAnnouncement._id)
+          if (refreshed) {
+            setEditingAnnouncement(refreshed)
+            setAnnouncementFormData({
+              title: refreshed.title,
+              description: refreshed.description,
+              date: new Date(refreshed.date).toISOString().split('T')[0],
+              order: refreshed.order || 0,
+              isActive: refreshed.isActive
+            })
+            setAnnouncementImage(null)
+            setAnnouncementImagePreview(refreshed.image ? `http://localhost:5000${refreshed.image}` : null)
+            if (refreshed.updatedAt) {
+              setAnnouncementEditVersion(new Date(refreshed.updatedAt).getTime())
+            }
+          }
+        }
+        setAnnouncementFormLoading(false)
+        return
+      }
       
       if (response.ok) {
         const successMessage = editingAnnouncement
@@ -318,6 +487,9 @@ const AdminGallery = () => {
 
         setAnnouncementsSuccess(successMessage)
         await fetchAnnouncements()
+        if (result?.newTimestamp) {
+          setAnnouncementEditVersion(result.newTimestamp)
+        }
 
         // SweetAlert success for announcements
         Swal.fire({
@@ -339,6 +511,7 @@ const AdminGallery = () => {
           setAnnouncementImage(null)
           setAnnouncementImagePreview(null)
           setAnnouncementsSuccess('')
+          setAnnouncementEditVersion(null)
         }, 1500)
       } else {
         const message = result.message || 'Failed to save announcement'
@@ -386,12 +559,35 @@ const AdminGallery = () => {
     setAnnouncementsLoading(true)
     setAnnouncementsError('')
     try {
+      const targetAnnouncement = announcements.find((a) => a._id === id)
+      const clientTimestamp = targetAnnouncement?.updatedAt
+        ? new Date(targetAnnouncement.updatedAt).getTime()
+        : Date.now()
+
       const response = await fetch(`/api/announcements/${id}`, {
         method: 'DELETE',
         headers: {
+          'Content-Type': 'application/json',
           ...getAuthHeaders()
-        }
+        },
+        body: JSON.stringify({ clientTimestamp })
       })
+
+      const data = await response.json().catch(() => ({}))
+
+      if (response.status === 409) {
+        const message = data.message || 'Your edit is outdated. Another user saved first.'
+        setAnnouncementsError(message)
+        Swal.fire({
+          title: 'Outdated Data',
+          text: message,
+          icon: 'warning',
+          confirmButtonColor: '#dc143c'
+        })
+        await fetchAnnouncements()
+        setAnnouncementsLoading(false)
+        return
+      }
 
       if (response.ok) {
         const message = 'Announcement deleted successfully!'
@@ -405,8 +601,18 @@ const AdminGallery = () => {
           confirmButtonColor: '#dc143c'
         })
         setTimeout(() => setAnnouncementsSuccess(''), 2000)
+      } else if (response.status === 404) {
+        // Item already deleted - just refresh the list
+        const message = 'Announcement not found (may have been already deleted)'
+        setAnnouncementsError(message)
+        await fetchAnnouncements()
+        Swal.fire({
+          title: 'Item Not Found',
+          text: message,
+          icon: 'info',
+          confirmButtonColor: '#dc143c'
+        })
       } else {
-        const data = await response.json()
         const message = data.message || 'Failed to delete announcement'
         setAnnouncementsError(message)
 
@@ -443,6 +649,7 @@ const AdminGallery = () => {
         <button
           onClick={() => {
             setEditingGalleryItem(null)
+            setGalleryEditVersion(Date.now())
             setGalleryFormData({
               title: '',
               category: 'historical',
@@ -556,6 +763,8 @@ const AdminGallery = () => {
                 <button
                   onClick={() => {
                     setEditingGalleryItem(item)
+                    const timestamp = item.updatedAt ? new Date(item.updatedAt).getTime() : Date.now()
+                    setGalleryEditVersion(timestamp)
                     setGalleryFormData({
                       title: item.title,
                       category: item.category,
@@ -593,6 +802,7 @@ const AdminGallery = () => {
           <button
             onClick={() => {
               setEditingAnnouncement(null)
+              setAnnouncementEditVersion(Date.now())
               setAnnouncementFormData({
                 title: '',
                 description: '',
@@ -695,6 +905,8 @@ const AdminGallery = () => {
                     <button
                       onClick={() => {
                         setEditingAnnouncement(announcement)
+                        const timestamp = announcement.updatedAt ? new Date(announcement.updatedAt).getTime() : Date.now()
+                        setAnnouncementEditVersion(timestamp)
                         setAnnouncementFormData({
                           title: announcement.title,
                           description: announcement.description,
@@ -755,6 +967,7 @@ const AdminGallery = () => {
             setGalleryImagePreview(null)
             setGalleryError('')
             setGallerySuccess('')
+            setGalleryEditVersion(null)
           }
         }}
         >
@@ -796,6 +1009,7 @@ const AdminGallery = () => {
                   setGalleryImagePreview(null)
                   setGalleryError('')
                   setGallerySuccess('')
+                  setGalleryEditVersion(null)
                 }}
                 style={{
                   background: 'none',
@@ -838,7 +1052,6 @@ const AdminGallery = () => {
                   {gallerySuccess}
                 </div>
               )}
-
               <form onSubmit={handleGallerySubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                 <div>
                   <label style={{ display: 'block', marginBottom: '6px', color: '#1a1a1a', fontWeight: '500', fontSize: '14px' }}>
@@ -977,6 +1190,7 @@ const AdminGallery = () => {
                       setGalleryImagePreview(null)
                       setGalleryError('')
                       setGallerySuccess('')
+                      setGalleryEditVersion(null)
                     }}
                     style={{
                       padding: '12px 24px',
@@ -1044,6 +1258,7 @@ const AdminGallery = () => {
             setAnnouncementImagePreview(null)
             setAnnouncementsError('')
             setAnnouncementsSuccess('')
+            setAnnouncementEditVersion(null)
           }
         }}
         >
@@ -1084,6 +1299,7 @@ const AdminGallery = () => {
                   setAnnouncementImagePreview(null)
                   setAnnouncementsError('')
                   setAnnouncementsSuccess('')
+                  setAnnouncementEditVersion(null)
                 }}
                 style={{
                   background: 'none',
@@ -1126,7 +1342,6 @@ const AdminGallery = () => {
                   {announcementsSuccess}
                 </div>
               )}
-
               <form onSubmit={handleAnnouncementSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                 <div>
                   <label style={{ display: 'block', marginBottom: '6px', color: '#1a1a1a', fontWeight: '500', fontSize: '14px' }}>
@@ -1246,6 +1461,7 @@ const AdminGallery = () => {
                       setAnnouncementImagePreview(null)
                       setAnnouncementsError('')
                       setAnnouncementsSuccess('')
+                      setAnnouncementEditVersion(null)
                     }}
                     style={{
                       padding: '12px 24px',

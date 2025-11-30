@@ -1,0 +1,24 @@
+[
+  {
+    "_id": "692ad2ba4e850384813a23e5",
+    "username": "BSC-1 Admin",
+    "email": "proilanadolfo@gmail.com",
+    "passwordHash": "$2a$10$z9erkDqrcDp28uddJc1.CuSqT11VA6FDeYSGateYKwuJ8bKpNP4d.",
+    "name": "POPOY TV22",
+    "profilePicture": "https://lh3.googleusercontent.com/a/ACg8ocLjwqigfGqslADeT-jj9Pd5WhczCj1XsIh9Gn6H6C05AfF8qdUn=s96-c",
+    "resetToken": null,
+    "resetTokenExpiry": null,
+    "status": "active",
+    "rts": 1764414138634,
+    "wts": 1764414138634,
+    "createdAt": "2025-11-29T11:02:18.635Z",
+    "updatedAt": "2025-11-29T11:02:40.056Z",
+    "__v": 0,
+    "googleId": "100679166458680525984",
+    "googleProfile": {
+      "name": "POPOY TV22",
+      "picture": "https://lh3.googleusercontent.com/a/ACg8ocLjwqigfGqslADeT-jj9Pd5WhczCj1XsIh9Gn6H6C05AfF8qdUn=s96-c",
+      "verified_email": true
+    }
+  }
+]

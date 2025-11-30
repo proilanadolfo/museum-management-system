@@ -1,0 +1,58 @@
+[
+  {
+    "_id": "6929519d79055f9408f3cd18",
+    "title": "Museum Schedule Update",
+    "description": "The museum will be open from 8:00 AM to 5:00 PM, Monday to Saturday. We encourage visitors to come early to fully enjoy the exhibits.",
+    "date": "2025-11-28T00:00:00.000Z",
+    "isActive": true,
+    "order": 6,
+    "createdAt": "2025-11-28T07:39:09.864Z",
+    "updatedAt": "2025-11-28T17:04:19.165Z",
+    "__v": 0,
+    "rts": 1764349459163,
+    "wts": 1764349459163,
+    "image": "/uploads/announcements/announcement-1764349459090-655592224.jpg"
+  },
+  {
+    "_id": "692951a679055f9408f3cd1f",
+    "title": "New Exhibit Opening Soon",
+    "description": "A new historical exhibit titled “Treasures of Bukidnon” will officially open next week. All guests are invited to witness the unveiling.",
+    "date": "2025-11-28T00:00:00.000Z",
+    "isActive": true,
+    "order": 5,
+    "createdAt": "2025-11-28T07:39:18.605Z",
+    "updatedAt": "2025-11-28T17:04:50.288Z",
+    "__v": 0,
+    "image": "/uploads/announcements/announcement-1764349490234-950198045.jpg",
+    "rts": 1764349490288,
+    "wts": 1764349490288
+  },
+  {
+    "_id": "6929d64bbe8ece54966c84f5",
+    "title": "System Maintenance Notice",
+    "description": "The museum website and attendance system will undergo maintenance on Saturday, 9:00 PM – 11:00 PM. Some features may be temporarily unavailable.",
+    "date": "2025-11-28T00:00:00.000Z",
+    "image": "/uploads/announcements/announcement-1764349515594-751631329.JPG",
+    "isActive": true,
+    "order": 0,
+    "rts": 1764349515604,
+    "wts": 1764349515604,
+    "createdAt": "2025-11-28T17:05:15.606Z",
+    "updatedAt": "2025-11-28T17:05:15.606Z",
+    "__v": 0
+  },
+  {
+    "_id": "6929d666be8ece54966c84fc",
+    "title": "Free Admission Day",
+    "description": "Enjoy FREE admission this coming Friday in celebration of National Heritage Month. Bring your friends and family!",
+    "date": "2025-11-28T00:00:00.000Z",
+    "image": "/uploads/announcements/announcement-1764349542690-833426583.jpg",
+    "isActive": true,
+    "order": 4,
+    "rts": 1764349542697,
+    "wts": 1764349542697,
+    "createdAt": "2025-11-28T17:05:42.698Z",
+    "updatedAt": "2025-11-28T17:05:42.698Z",
+    "__v": 0
+  }
+]

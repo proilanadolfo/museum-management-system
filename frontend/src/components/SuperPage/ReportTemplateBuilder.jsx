@@ -43,14 +43,48 @@ const ReportTemplateBuilder = () => {
 
   const [logoFile, setLogoFile] = useState(null)
   const [logoPreview, setLogoPreview] = useState('')
+  const [editVersion, setEditVersion] = useState(null)
 
   useEffect(() => {
     fetchTemplates()
   }, [])
 
+  const getAuthHeaders = () => {
+    const raw = localStorage.getItem('superadmin_token')
+    const token = raw && raw !== 'null' && raw !== 'undefined' ? raw : null
+    return token ? { Authorization: `Bearer ${token}` } : {}
+  }
+
+  // Handle 401 errors - redirect to login
+  const handleAuthError = () => {
+    localStorage.removeItem('superadmin_token')
+    localStorage.removeItem('superadmin_user')
+    window.location.href = '/login'
+  }
+
   const fetchTemplates = async () => {
     try {
-      const response = await fetch('/api/report-templates')
+      const token = getAuthHeaders().Authorization
+      if (!token) {
+        // No token - don't fetch, but don't redirect (might be timing issue)
+        // Only redirect if we actually get 401 from API
+        console.log('No token available, skipping fetch')
+        return
+      }
+
+      const response = await fetch('/api/report-templates', {
+        headers: {
+          ...getAuthHeaders()
+        }
+      })
+      
+      // Only logout if we have a token but got 401 (means token is invalid/expired)
+      // BUT: Don't force logout - might be temporary issue
+      if (response.status === 401 && token) {
+        setError('Unauthorized: Please check your session or try refreshing the page')
+        return
+      }
+      
       if (response.ok) {
         const data = await response.json()
         console.log('Templates response:', data)
@@ -181,15 +215,25 @@ const ReportTemplateBuilder = () => {
         ...(incomingLayout.visibleColumns || {})
       }
     }
-    setSelectedTemplate(template)
+    // Ensure template has proper ID format
+    const templateWithId = {
+      ...template,
+      _id: template._id || template.id,
+      id: template.id || template._id
+    }
+    console.log('Loading template:', { id: templateWithId._id, name: templateWithId.name })
+    setSelectedTemplate(templateWithId)
     setFormData({
-      name: template.name,
+      name: templateWithId.name,
       layout: mergedLayout
     })
-    if (template.layout.logoUrl) {
-      setLogoPreview(template.layout.logoUrl)
+    // Use mergedLayout instead of template.layout to avoid undefined errors
+    if (mergedLayout.logoUrl) {
+      setLogoPreview(mergedLayout.logoUrl)
     }
     setIsEditing(true)
+    const timestamp = template.updatedAt ? new Date(template.updatedAt).getTime() : Date.now()
+    setEditVersion(timestamp)
   }
 
   const createNewTemplate = () => {
@@ -201,6 +245,7 @@ const ReportTemplateBuilder = () => {
     setLogoPreview('')
     setLogoFile(null)
     setIsEditing(true)
+    setEditVersion(Date.now())
   }
 
   const saveTemplate = async () => {
@@ -247,19 +292,47 @@ const ReportTemplateBuilder = () => {
 
       const userData = JSON.parse(storedUser)
 
+      // Ensure layout is always defined, fallback to defaultLayout if missing
+      const layout = formData.layout || defaultLayout
+
       const templateData = {
         name: formData.name,
-        layout: formData.layout,
+        layout: layout,
         createdBy: userData.id
+      }
+
+      if (selectedTemplate?._id) {
+        templateData.clientTimestamp = editVersion ?? Date.now()
       }
 
       console.log('Saving template:', templateData)
 
-      const url = selectedTemplate 
-        ? `/api/report-templates/${selectedTemplate._id}`
+      // Ensure template ID is properly formatted
+      let templateId = null
+      if (selectedTemplate) {
+        templateId = selectedTemplate._id || selectedTemplate.id
+        if (templateId) {
+          templateId = String(templateId).trim()
+          console.log('Updating template with ID:', templateId)
+        } else {
+          console.error('Template ID not found in selectedTemplate:', selectedTemplate)
+          Swal.fire({
+            title: 'Error',
+            text: 'Template ID not found. Please select a template or create a new one.',
+            icon: 'error',
+            confirmButtonColor: '#dc143c'
+          })
+          return
+        }
+      }
+      
+      const url = templateId 
+        ? `/api/report-templates/${templateId}`
         : '/api/report-templates'
       
-      const method = selectedTemplate ? 'PUT' : 'POST'
+      const method = templateId ? 'PUT' : 'POST'
+      
+      console.log('Saving template:', { url, method, hasName: !!formData.name, hasLayout: !!formData.layout })
 
       const response = await fetch(url, {
         method,
@@ -270,9 +343,36 @@ const ReportTemplateBuilder = () => {
         body: JSON.stringify(templateData)
       })
 
-      const responseData = await response.json().catch(() => ({ message: 'Failed to parse response' }))
+      if (response.status === 401) {
+        handleAuthError()
+        return
+      }
+
+      // Safely parse JSON or fall back to plain text
+      let responseData
+      const rawText = await response.text()
+      try {
+        responseData = rawText ? JSON.parse(rawText) : {}
+      } catch {
+        responseData = { message: rawText || 'Failed to save template' }
+      }
       console.log('Response status:', response.status)
       console.log('Response data:', responseData)
+
+      if (response.status === 409) {
+        Swal.fire({
+          title: 'Outdated Data',
+          text: responseData.message || 'Your edit is outdated. Another user saved first.',
+          icon: 'warning',
+          confirmButtonColor: '#dc143c'
+        })
+        if (responseData.currentTimestamp) {
+          setEditVersion(responseData.currentTimestamp)
+        }
+        await fetchTemplates()
+        setLoading(false)
+        return
+      }
 
       if (response.ok) {
         Swal.fire({
@@ -283,6 +383,9 @@ const ReportTemplateBuilder = () => {
         })
         // Refresh templates list immediately
         await fetchTemplates()
+        if (responseData?.newTimestamp) {
+          setEditVersion(responseData.newTimestamp)
+        }
         // Wait a bit then close editor
         setTimeout(() => {
           setIsEditing(false)
@@ -295,6 +398,7 @@ const ReportTemplateBuilder = () => {
           })
           setLogoPreview('')
           setLogoFile(null)
+          setEditVersion(null)
         }, 1500)
       } else {
         console.error('Template save error:', responseData)
@@ -308,13 +412,17 @@ const ReportTemplateBuilder = () => {
       }
     } catch (err) {
       console.error('Network error:', err)
+      // Provide user-friendly error message without exposing technical details
+      const errorMessage = err.message && err.message.includes('not defined')
+        ? 'An error occurred while saving the template. Please check all fields are filled correctly and try again.'
+        : err.message || 'An unexpected error occurred'
       Swal.fire({
         title: 'Network Error',
-        text: `Please check your connection and try again. ${err.message}`,
+        text: `Please check your connection and try again. ${errorMessage}`,
         icon: 'error',
         confirmButtonColor: '#dc143c'
       })
-      setError(`Network error: ${err.message}. Please try again.`)
+      setError(`Network error: ${errorMessage}. Please try again.`)
     } finally {
       setLoading(false)
     }
@@ -375,7 +483,19 @@ const ReportTemplateBuilder = () => {
         }
       })
 
-      const responseData = await response.json().catch(() => ({ message: 'Failed to parse response' }))
+      if (response.status === 401) {
+        handleAuthError()
+        return
+      }
+
+      // Safely parse JSON or plain text for delete response
+      let responseData
+      const rawText = await response.text()
+      try {
+        responseData = rawText ? JSON.parse(rawText) : {}
+      } catch {
+        responseData = { message: rawText || 'Failed to delete template' }
+      }
       console.log('Delete response:', response.status, responseData)
 
       if (response.ok) {
@@ -389,8 +509,11 @@ const ReportTemplateBuilder = () => {
         if (selectedTemplate?._id === templateId) {
           setIsEditing(false)
           setSelectedTemplate(null)
+          setEditVersion(null)
         }
-        setTimeout(() => setSuccess(''), 2000)
+        setTimeout(() => {
+          setSuccess('')
+        }, 2000)
       } else {
         Swal.fire({
           title: 'Delete Failed',
@@ -442,6 +565,7 @@ const ReportTemplateBuilder = () => {
               onClick={() => {
                 setIsEditing(false)
                 setSelectedTemplate(null)
+                setEditVersion(null)
               }}
               style={{
                 padding: '10px 20px',
@@ -713,7 +837,7 @@ const ReportTemplateBuilder = () => {
           <p className="dash-subtitle">Design and manage custom PDF report layouts</p>
         </div>
         <button 
-          onClick={createNewTemplate}
+          onClick={() => createNewTemplate()}
           style={{
             padding: '10px 20px',
             background: 'linear-gradient(135deg, #dc143c, #ff8c00)',
@@ -771,7 +895,7 @@ const ReportTemplateBuilder = () => {
                 🔄 Refresh List
               </button>
               <button 
-                onClick={createNewTemplate}
+                onClick={() => createNewTemplate()}
                 style={{
                   padding: '12px 24px',
                   background: '#dc143c',
@@ -806,10 +930,10 @@ const ReportTemplateBuilder = () => {
               </p>
               <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
                 <button 
-                  onClick={(e) => {
+                  onClick={async (e) => {
                     e.preventDefault()
                     e.stopPropagation()
-                    loadTemplate(template)
+                    await loadTemplate(template)
                   }}
                   style={{
                     flex: 1,

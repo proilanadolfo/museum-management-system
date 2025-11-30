@@ -1,0 +1,21 @@
+[
+  {
+    "_id": "692ad23d4e850384813a237a",
+    "username": "Proilan",
+    "email": "2301114143@student.buksu.edu.ph",
+    "passwordHash": "$2a$10$DYosyn7DGF09U.CbPH4z3.OtMMBg4Ua4GsRP3uHD73g3YrpvHRTHu",
+    "name": "Proilan Adolfo",
+    "profilePicture": "https://lh3.googleusercontent.com/a/ACg8ocIMk9JRjXnJ4Kkjo1wp5jLAZ7IbcoDDKFzH5LHzPtrovh8ZLic=s96-c",
+    "resetToken": null,
+    "resetTokenExpiry": null,
+    "createdAt": "2025-11-29T11:00:13.493Z",
+    "updatedAt": "2025-11-29T11:00:46.626Z",
+    "__v": 0,
+    "googleId": "111797660155719043768",
+    "googleProfile": {
+      "name": "Proilan Adolfo",
+      "picture": "https://lh3.googleusercontent.com/a/ACg8ocIMk9JRjXnJ4Kkjo1wp5jLAZ7IbcoDDKFzH5LHzPtrovh8ZLic=s96-c",
+      "verified_email": true
+    }
+  }
+]

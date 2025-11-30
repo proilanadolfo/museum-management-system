@@ -25,15 +25,31 @@ export default function AdminSidebar({ onNavigate, active }) {
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
 
-  const items = [
-    { key: 'dashboard', label: 'Dashboard', icon: <FiHome />, description: 'Home' },
-    { key: 'bookings', label: 'Bookings', icon: <FiCalendar />, description: 'Reservations' },
-    { key: 'attendance', label: 'Attendance', icon: <FiUsers />, description: 'Records' },
-    { key: 'gallery', label: 'Gallery', icon: <FiImage />, description: 'Exhibits' },
-    { key: 'reports', label: 'Reports', icon: <FiBarChart />, description: 'Analytics' },
-    { key: 'settings', label: 'Settings', icon: <FiSettings />, description: 'Configuration' },
-    { key: 'logout', label: 'Logout', icon: <FiLogOut />, description: 'Sign out' },
+  const [modulePermissions, setModulePermissions] = useState({
+    attendance: true,
+    gallery: true,
+    reports: true,
+    settings: true
+  })
+
+  // Map module keys to menu items
+  const allMenuItems = [
+    { key: 'dashboard', label: 'Dashboard', icon: <FiHome />, description: 'Home', module: null },
+    { key: 'bookings', label: 'Bookings', icon: <FiCalendar />, description: 'Reservations', module: null },
+    { key: 'attendance', label: 'Attendance', icon: <FiUsers />, description: 'Records', module: 'attendance' },
+    { key: 'gallery', label: 'Gallery', icon: <FiImage />, description: 'Exhibits', module: 'gallery' },
+    { key: 'reports', label: 'Reports', icon: <FiBarChart />, description: 'Reports', module: 'reports' },
+    { key: 'settings', label: 'Settings', icon: <FiSettings />, description: 'Configuration', module: 'settings' },
+    { key: 'logout', label: 'Logout', icon: <FiLogOut />, description: 'Sign out', module: null },
   ]
+
+  // Filter items based on module permissions
+  const items = allMenuItems.filter(item => {
+    // Always show dashboard, bookings, and logout
+    if (!item.module) return true
+    // Check if module is enabled
+    return modulePermissions[item.module] === true
+  })
 
   const [isCollapsed, setIsCollapsed] = useState(false)
   useEffect(() => {
@@ -199,6 +215,81 @@ export default function AdminSidebar({ onNavigate, active }) {
     setIsCollapsed(prev => !prev)
   }
 
+  // Fetch module permissions
+  const fetchModulePermissions = async () => {
+    try {
+      const token = localStorage.getItem('admin_token')
+      if (!token) return
+
+      const response = await fetch('/api/module-permissions/my-permissions', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        setModulePermissions(data.permissions || {
+          attendance: true,
+          gallery: true,
+          exhibits: true,
+          reports: true,
+          analytics: true,
+          settings: true
+        })
+      }
+    } catch (error) {
+      console.log('Error fetching module permissions:', error)
+      // Default to all enabled on error
+    }
+  }
+
+  useEffect(() => {
+    // Initial load
+    fetchModulePermissions()
+
+    // Real-time updates via SSE (Server-Sent Events)
+    if (!('EventSource' in window)) {
+      return undefined
+    }
+
+    const eventSource = new EventSource('/api/realtime/stream')
+
+    const handleModulePermissionsEvent = (e) => {
+      try {
+        const payload = JSON.parse(e.data)
+        const adminIdFromEvent = payload?.data?.adminId
+
+        // Check if this event is for the currently logged-in admin
+        const storedUser = localStorage.getItem('admin_user')
+        if (!storedUser || !adminIdFromEvent) return
+
+        const userData = JSON.parse(storedUser)
+        const currentAdminId = userData.id || userData._id
+        if (!currentAdminId) return
+
+        if (adminIdFromEvent === currentAdminId.toString()) {
+          // Re-fetch permissions for this admin
+          fetchModulePermissions()
+        }
+      } catch (error) {
+        console.error('Error processing modulePermissions SSE event:', error)
+      }
+    }
+
+    eventSource.addEventListener('modulePermissions', handleModulePermissionsEvent)
+
+    eventSource.onerror = () => {
+      // Browser will auto-reconnect; no special handling needed
+    }
+
+    return () => {
+      eventSource.removeEventListener('modulePermissions', handleModulePermissionsEvent)
+      eventSource.close()
+    }
+  }, [])
+
   // Fetch user profile data
   useEffect(() => {
     const fetchUserProfile = async () => {
@@ -221,11 +312,15 @@ export default function AdminSidebar({ onNavigate, active }) {
           })
         }
 
-        // Try to fetch additional profile data from API
+        // Try to fetch additional profile data from API (optional - don't logout on failure)
         const token = localStorage.getItem('admin_token')
         if (token && storedUser) {
           const userData = JSON.parse(storedUser)
           const userId = userData.id || userData._id
+          
+          // Only fetch if we have a valid userId
+          if (userId) {
+            try {
           const response = await fetch(`/api/admin/profile?userId=${userId}`, {
             headers: {
               'Authorization': `Bearer ${token}`,
@@ -233,6 +328,7 @@ export default function AdminSidebar({ onNavigate, active }) {
             }
           })
           
+              // Don't logout on 401/404 for optional profile fetch - just use localStorage data
           if (response.ok) {
             const profileData = await response.json()
             setUserProfile(prev => ({
@@ -240,6 +336,12 @@ export default function AdminSidebar({ onNavigate, active }) {
               ...profileData,
               role: 'Museum Admin'
             }))
+              }
+              // Silently ignore 401, 404, and other errors for optional profile endpoint
+            } catch (error) {
+              // Silently ignore network errors for optional profile fetch
+              console.log('Profile fetch failed, using localStorage data:', error.message)
+            }
           }
         }
       } catch (error) {
@@ -309,8 +411,13 @@ export default function AdminSidebar({ onNavigate, active }) {
           {items.map((item) => (
             <li key={item.key} className="nav-item">
               <button
+                type="button"
                 className={`nav-link ${active === item.key ? 'is-active' : ''}`}
-                onClick={() => onNavigate?.(item.key)}
+                onClick={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  onNavigate?.(item.key)
+                }}
                 title={item.description}
               >
                 <span className="nav-icon">{item.icon}</span>

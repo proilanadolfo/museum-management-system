@@ -36,7 +36,9 @@ const bookingSchema = new mongoose.Schema(
     cancelledAt: {
       type: Date,
       default: null
-    }
+    },
+    rts: { type: Number, default: 0 },
+    wts: { type: Number, default: 0 }
   },
   { timestamps: true }
 )
@@ -46,6 +48,13 @@ bookingSchema.pre('save', function(next) {
   if (!this.confirmationCode) {
     this.confirmationCode = 'BK' + Date.now().toString().slice(-6)
   }
+
+  if (this.isNew) {
+    const now = Date.now()
+    this.wts = this.wts || now
+    this.rts = this.rts || now
+  }
+
   next()
 })
 

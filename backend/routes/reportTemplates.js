@@ -1,21 +1,24 @@
 const express = require('express')
 const router = express.Router()
 const reportTemplateController = require('../controllers/reportTemplateController')
-const { authenticateAdminOrSuperAdmin } = require('../middleware/auth')
+const {
+  authenticateAdminOrSuperAdmin,
+  authenticateSuperAdmin
+} = require('../middleware/auth')
 
-// Get all templates
-router.get('/report-templates', reportTemplateController.getAllTemplates)
+// Get all templates (Admin or Super Admin)
+router.get('/report-templates', authenticateAdminOrSuperAdmin, reportTemplateController.getAllTemplates)
 
-// Get single template by ID
-router.get('/report-templates/:id', reportTemplateController.getTemplateById)
+// Get single template by ID (Admin or Super Admin)
+router.get('/report-templates/:id', authenticateAdminOrSuperAdmin, reportTemplateController.getTemplateById)
 
-// Create new template (Admin or Super Admin)
-router.post('/report-templates', authenticateAdminOrSuperAdmin, reportTemplateController.createTemplate)
+// Create new template (Super Admin only)
+router.post('/report-templates', authenticateSuperAdmin, reportTemplateController.createTemplate)
 
-// Update template (Admin or Super Admin)
-router.put('/report-templates/:id', authenticateAdminOrSuperAdmin, reportTemplateController.updateTemplate)
+// Update template (Super Admin only)
+router.put('/report-templates/:id', authenticateSuperAdmin, reportTemplateController.updateTemplate)
 
-// Delete template (Admin or Super Admin)
-router.delete('/report-templates/:id', authenticateAdminOrSuperAdmin, reportTemplateController.deleteTemplate)
+// Delete template (Super Admin only)
+router.delete('/report-templates/:id', authenticateSuperAdmin, reportTemplateController.deleteTemplate)
 
 module.exports = router

@@ -77,6 +77,14 @@ const reportTemplateSchema = new mongoose.Schema(
     updatedAt: {
       type: Date,
       default: Date.now
+    },
+    rts: {
+      type: Number,
+      default: 0
+    },
+    wts: {
+      type: Number,
+      default: 0
     }
   },
   { 

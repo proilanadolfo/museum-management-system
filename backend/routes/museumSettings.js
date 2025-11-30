@@ -5,7 +5,8 @@ const fs = require('fs')
 const MuseumSettings = require('../models/MuseumSettings')
 const Booking = require('../models/Booking')
 const { broadcastSettingsUpdate } = require('../utils/sseBroadcaster')
-const { authenticateAdmin, authenticateSuperAdmin } = require('../middleware/auth')
+const { authenticateAdmin, authenticateSuperAdmin, authenticateAdminOrSuperAdmin } = require('../middleware/auth')
+const { checkModuleAccess } = require('../middleware/moduleAccess')
 
 const router = express.Router()
 
@@ -198,10 +199,34 @@ const missionImageUpload = multer({
   fileFilter: imageFileFilter
 })
 
-// Get museum settings (Admin only)
-router.get('/museum-settings', authenticateAdmin, async (req, res) => {
+// Get museum settings (Admin or Super Admin)
+router.get('/museum-settings', authenticateAdminOrSuperAdmin, checkModuleAccess('settings'), async (req, res) => {
   try {
-    const settings = await MuseumSettings.getSettings()
+    let settings = await MuseumSettings.findOne()
+    
+    // If no settings exist, create default settings
+    if (!settings) {
+      const defaultHours = new Map()
+      defaultHours.set('1', { open: '09:00', close: '18:00' })
+      defaultHours.set('2', { open: '09:00', close: '18:00' })
+      defaultHours.set('3', { open: '09:00', close: '18:00' })
+      defaultHours.set('4', { open: '09:00', close: '18:00' })
+      defaultHours.set('5', { open: '09:00', close: '18:00' })
+      defaultHours.set('6', { open: '10:00', close: '17:00' })
+      defaultHours.set('0', { open: '10:00', close: '17:00' })
+      
+      settings = await MuseumSettings.create({
+        availableDays: [1, 2, 3, 4, 5],
+        operatingHours: defaultHours,
+        blockedDates: [],
+        availableDates: [],
+        timeSlots: [],
+        minAdvanceBookingDays: 1,
+        maxAdvanceBookingDays: 90,
+        maxVisitorsPerSlot: 50,
+        isAcceptingBookings: true
+      })
+    }
     
     // Convert Map to object for JSON response
     const operatingHoursObj = {}
@@ -234,7 +259,7 @@ router.get('/museum-settings', authenticateAdmin, async (req, res) => {
     console.error('Get museum settings error:', error)
     res.status(500).json({
       success: false,
-      message: 'Failed to retrieve museum settings'
+      message: error?.message || 'Failed to retrieve museum settings'
     })
   }
 })
@@ -286,8 +311,13 @@ router.get('/museum-settings/public', async (req, res) => {
   }
 })
 
-// Update museum settings (Admin only)
-router.put('/museum-settings', authenticateAdmin, async (req, res) => {
+// Helper to compute current concurrency timestamp
+const getRecordTimestamp = (record) =>
+  Math.max(record.wts || 0, record.updatedAt ? record.updatedAt.getTime() : 0)
+
+// Update museum settings (Admin or Super Admin) - optimistic timestamp-based control
+// If clientTimestamp is provided, first writer wins and stale updates get 409
+router.put('/museum-settings', authenticateAdminOrSuperAdmin, checkModuleAccess('settings'), async (req, res) => {
   try {
     const {
       availableDays,
@@ -301,7 +331,8 @@ router.put('/museum-settings', authenticateAdmin, async (req, res) => {
       isAcceptingBookings,
       mission,
       vision,
-      missionSection
+      missionSection,
+      clientTimestamp
     } = req.body
 
     // Helpers
@@ -339,7 +370,44 @@ router.put('/museum-settings', authenticateAdmin, async (req, res) => {
     let settings = await MuseumSettings.findOne()
     
     if (!settings) {
-      settings = new MuseumSettings()
+      // Create default settings if none exist
+      const defaultHours = new Map()
+      defaultHours.set('1', { open: '09:00', close: '18:00' })
+      defaultHours.set('2', { open: '09:00', close: '18:00' })
+      defaultHours.set('3', { open: '09:00', close: '18:00' })
+      defaultHours.set('4', { open: '09:00', close: '18:00' })
+      defaultHours.set('5', { open: '09:00', close: '18:00' })
+      defaultHours.set('6', { open: '10:00', close: '17:00' })
+      defaultHours.set('0', { open: '10:00', close: '17:00' })
+      
+      settings = await MuseumSettings.create({
+        availableDays: [1, 2, 3, 4, 5],
+        operatingHours: defaultHours,
+        blockedDates: [],
+        availableDates: [],
+        timeSlots: [],
+        minAdvanceBookingDays: 1,
+        maxAdvanceBookingDays: 90,
+        maxVisitorsPerSlot: 50,
+        isAcceptingBookings: true
+      })
+    }
+
+    // Timestamp-based conflict detection when clientTimestamp is provided
+    const hasInfoPayload =
+      mission !== undefined ||
+      vision !== undefined ||
+      missionSection !== undefined
+
+    if (clientTimestamp !== undefined && clientTimestamp !== null && hasInfoPayload) {
+      const currentTs = getRecordTimestamp(settings)
+      if (Number(clientTimestamp) < currentTs) {
+        return res.status(409).json({
+          success: false,
+          message: 'Your Museum Information changes are outdated. Another admin saved first.',
+          currentTimestamp: currentTs
+        })
+      }
     }
 
     // Update fields if provided
@@ -435,6 +503,10 @@ router.put('/museum-settings', authenticateAdmin, async (req, res) => {
       settings.markModified('missionSection')
     }
 
+    const now = Date.now()
+    settings.wts = now
+    settings.rts = Math.max(settings.rts || 0, now)
+
     await settings.save()
 
     // Convert Map to object for JSON response
@@ -484,10 +556,11 @@ router.put('/museum-settings', authenticateAdmin, async (req, res) => {
       console.error('Error broadcasting museum settings update:', broadcastError)
     }
 
-    res.json({
+    return res.json({
       success: true,
       message: 'Museum settings updated successfully',
-      data: responseData
+      data: responseData,
+      newTimestamp: settings.wts
     })
   } catch (error) {
     console.error('Update museum settings error:', error)

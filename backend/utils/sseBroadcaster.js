@@ -125,6 +125,16 @@ const broadcastSettingsUpdate = (data) => {
 }
 
 /**
+ * Broadcast module permission updates for a specific admin
+ */
+const broadcastModulePermissionsUpdate = (adminId) => {
+  if (!adminId) return
+  broadcastEvent('modulePermissions', {
+    adminId: adminId.toString()
+  })
+}
+
+/**
  * Setup SSE connection endpoint
  */
 const setupSSEConnection = (req, res) => {
@@ -169,6 +179,7 @@ module.exports = {
   broadcastAttendance,
   broadcastDashboardUpdate,
   broadcastSettingsUpdate,
+  broadcastModulePermissionsUpdate,
   setupSSEConnection
 }
 

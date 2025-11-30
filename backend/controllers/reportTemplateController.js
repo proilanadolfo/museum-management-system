@@ -1,4 +1,5 @@
 const ReportTemplate = require('../models/ReportTemplate')
+const mongoose = require('mongoose')
 
 // Get all templates
 exports.getAllTemplates = async (req, res) => {
@@ -17,7 +18,8 @@ exports.getAllTemplates = async (req, res) => {
     res.status(500).json({ 
       success: false, 
       message: 'Failed to fetch templates',
-      error: error.message 
+      error: error.message,
+      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
     })
   }
 }
@@ -61,10 +63,27 @@ exports.createTemplate = async (req, res) => {
       })
     }
     
+    // Convert creatorId to ObjectId if it's a string
+    let creatorObjectId
+    try {
+      creatorObjectId = mongoose.Types.ObjectId.isValid(creatorId) 
+        ? new mongoose.Types.ObjectId(creatorId)
+        : creatorId
+    } catch (err) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Invalid creator ID format',
+        error: err.message 
+      })
+    }
+    
+    const timestamp = Date.now()
     const template = new ReportTemplate({
       name,
       layout,
-      createdBy: creatorId
+      createdBy: creatorObjectId,
+      rts: timestamp,
+      wts: timestamp
     })
     
     await template.save()
@@ -76,10 +95,13 @@ exports.createTemplate = async (req, res) => {
     })
   } catch (error) {
     console.error('Error creating template:', error)
+    console.error('Error stack:', error.stack)
+    console.error('Request body:', JSON.stringify(req.body, null, 2))
     res.status(500).json({ 
       success: false, 
       message: 'Failed to create template',
-      error: error.message 
+      error: error.message,
+      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
     })
   }
 }
@@ -88,16 +110,45 @@ exports.createTemplate = async (req, res) => {
 exports.updateTemplate = async (req, res) => {
   try {
     const { id } = req.params
-    const { name, layout } = req.body
+    const { name, layout, clientTimestamp } = req.body
+    
+    console.log('Updating template:', { id, name, hasLayout: !!layout, clientTimestamp })
+    
+    // Validate ID format
+    if (!id || id.trim() === '') {
+      return res.status(400).json({
+        success: false,
+        message: 'Template ID is required'
+      })
+    }
+    
+    // Check if ID is valid ObjectId format
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      console.error('Invalid template ID format:', id)
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid template ID format'
+      })
+    }
+
+    if (clientTimestamp === undefined || clientTimestamp === null) {
+      return res.status(400).json({
+        success: false,
+        message: 'clientTimestamp is required for timestamp ordering'
+      })
+    }
     
     const template = await ReportTemplate.findById(id)
     
     if (!template) {
+      console.error('Template not found:', id)
       return res.status(404).json({ 
         success: false, 
         message: 'Template not found' 
       })
     }
+    
+    console.log('Template found:', { id: template._id.toString(), name: template.name })
     
     // Check if user is the creator or super admin
     if (template.createdBy.toString() !== req.user.id && req.user.role !== 'superadmin') {
@@ -107,16 +158,33 @@ exports.updateTemplate = async (req, res) => {
       })
     }
     
+    const currentTimestamp = Math.max(
+      template.wts || 0,
+      template.updatedAt ? template.updatedAt.getTime() : 0
+    )
+
+    if (Number(clientTimestamp) < currentTimestamp) {
+      return res.status(409).json({
+        success: false,
+        message: 'Your edit is outdated. Another user saved first.',
+        currentTimestamp
+      })
+    }
+
     if (name) template.name = name
     if (layout) template.layout = layout
-    template.updatedAt = Date.now()
+    const now = Date.now()
+    template.updatedAt = now
+    template.wts = now
+    template.rts = Math.max(template.rts || 0, now)
     
     await template.save()
     
     res.json({ 
       success: true, 
       template,
-      message: 'Template updated successfully' 
+      message: 'Template updated successfully',
+      newTimestamp: template.wts
     })
   } catch (error) {
     console.error('Error updating template:', error)

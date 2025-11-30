@@ -8,10 +8,18 @@ const getDecodedToken = (req) => {
   const token = req.headers.authorization?.replace('Bearer ', '')
 
   if (!token) {
+    logger.debug('No token provided in request', { url: req.originalUrl })
     return null
   }
 
   const decoded = verifyToken(token)
+  if (!decoded) {
+    console.error('❌ Token verification failed for:', req.originalUrl)
+    logger.debug('Token verification failed', { url: req.originalUrl, tokenLength: token.length })
+  } else {
+    console.log('✅ Token verified:', { url: req.originalUrl, role: decoded.role, id: decoded.id, email: decoded.email })
+    logger.debug('Token verified successfully', { url: req.originalUrl, role: decoded.role, id: decoded.id })
+  }
   return decoded || null
 }
 
@@ -41,14 +49,52 @@ const authenticateByRole = (allowedRoles) => async (req, res, next) => {
     let user = null
 
     if (decoded.role === 'superadmin') {
-      user = await SuperAdmin.findById(decoded.id)
+      // Try to find user by ID
+      try {
+        user = await SuperAdmin.findById(decoded.id)
+      } catch (dbError) {
+        logger.error('Database error finding SuperAdmin', { 
+          error: dbError.message, 
+          id: decoded.id,
+          url: req.originalUrl 
+        })
+        return res.status(500).json({ message: 'Database error' })
+      }
+      
+      // If not found by ID, try by email as fallback
+      if (!user && decoded.email) {
+        try {
+          user = await SuperAdmin.findOne({ email: decoded.email })
+          if (user) {
+            logger.debug('SuperAdmin found by email fallback', { email: decoded.email })
+          }
+        } catch (dbError) {
+          logger.error('Database error finding SuperAdmin by email', { error: dbError.message })
+        }
+      }
+      
       if (!user) {
+        console.error('❌ SuperAdmin not found:', { 
+          tokenId: decoded.id, 
+          tokenEmail: decoded.email,
+          tokenRole: decoded.role,
+          tokenUsername: decoded.username,
+          url: req.originalUrl 
+        })
         logger.security.unauthorizedAccess(
           req.originalUrl,
           req.ip || req.connection.remoteAddress,
           req.get('user-agent')
         )
+        logger.error('SuperAdmin not found in database', { 
+          tokenId: decoded.id, 
+          tokenEmail: decoded.email,
+          tokenRole: decoded.role,
+          url: req.originalUrl 
+        })
         return res.status(401).json({ message: 'User not found' })
+      } else {
+        console.log('✅ SuperAdmin found:', { id: user._id.toString(), username: user.username, email: user.email })
       }
 
       req.user = {
@@ -58,13 +104,52 @@ const authenticateByRole = (allowedRoles) => async (req, res, next) => {
         email: user.email
       }
     } else if (decoded.role === 'admin') {
-      user = await Admin.findById(decoded.id)
+      // Try to find user by ID first
+      try {
+        user = await Admin.findById(decoded.id)
+        if (user) {
+          console.log('✅ Admin found by ID:', { id: user._id.toString(), username: user.username })
+        }
+      } catch (dbError) {
+        logger.error('Database error finding Admin by ID', { 
+          error: dbError.message, 
+          id: decoded.id,
+          url: req.originalUrl 
+        })
+      }
+      
+      // If not found by ID, try by email as fallback
+      if (!user && decoded.email) {
+        try {
+          user = await Admin.findOne({ email: decoded.email })
+          if (user) {
+            console.log('✅ Admin found by email fallback:', { email: decoded.email, id: user._id.toString() })
+            logger.debug('Admin found by email fallback', { email: decoded.email })
+          }
+        } catch (dbError) {
+          logger.error('Database error finding Admin by email', { error: dbError.message })
+        }
+      }
+      
       if (!user) {
+        console.error('❌ Admin not found:', { 
+          tokenId: decoded.id, 
+          tokenEmail: decoded.email,
+          tokenRole: decoded.role,
+          tokenUsername: decoded.username,
+          url: req.originalUrl 
+        })
         logger.security.unauthorizedAccess(
           req.originalUrl,
           req.ip || req.connection.remoteAddress,
           req.get('user-agent')
         )
+        logger.error('Admin not found in database', { 
+          tokenId: decoded.id, 
+          tokenEmail: decoded.email,
+          tokenRole: decoded.role,
+          url: req.originalUrl 
+        })
         return res.status(401).json({ message: 'Admin not found' })
       }
 

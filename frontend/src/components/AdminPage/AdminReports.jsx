@@ -42,6 +42,18 @@ const AdminReports = () => {
           ...getAuthHeaders()
         }
       })
+      // Only redirect on 401 if we have a token (means token is invalid/expired)
+      // BUT: Don't logout immediately - might be a temporary issue
+      const token = getAuthHeaders().Authorization
+      if (response.status === 401 && token) {
+        // Show error instead of logging out
+        console.error('Unauthorized: Please check your session or try refreshing the page')
+        return
+      }
+      // If 401 and no token, just skip (component might be loading)
+      if (response.status === 401 && !token) {
+        return
+      }
       if (response.ok) {
         const data = await response.json()
         setTemplates(data.templates || data.data || [])
@@ -557,7 +569,7 @@ const AdminReports = () => {
             return
           }
           
-          const checkOut = record.checkOutTime ? new Date(record.checkOutTime) : null
+          let checkOut = record.checkOutTime ? new Date(record.checkOutTime) : null
           if (checkOut && isNaN(checkOut.getTime())) {
             checkOut = null
           }
@@ -1002,6 +1014,7 @@ const AdminReports = () => {
           icon: 'warning',
           confirmButtonColor: '#dc143c'
         })
+        setReportLoading(false)
         return
       }
       const userData = JSON.parse(storedUser)
@@ -1009,7 +1022,11 @@ const AdminReports = () => {
       if (reportType === 'custom' && startDate && endDate) {
         url += `&startDate=${startDate}&endDate=${endDate}`
       }
-      const response = await fetch(url)
+      const response = await fetch(url, {
+        headers: {
+          ...getAuthHeaders()
+        }
+      })
       if (response.ok) {
         const data = await response.json()
         const records = data.records || []

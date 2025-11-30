@@ -63,8 +63,12 @@ const apiLimiter = rateLimit({
 })
 
 // Session configuration for Google OAuth
+const sessionSecret = process.env.SESSION_SECRET || 'your-session-secret-key-change-in-production'
+if (isProduction && sessionSecret === 'your-session-secret-key-change-in-production') {
+  logger.warn('⚠️  WARNING: Using default session secret in production! Set SESSION_SECRET in .env')
+}
 app.use(session({
-  secret: process.env.SESSION_SECRET || 'your-session-secret-key-change-in-production',
+  secret: sessionSecret,
   resave: false,
   saveUninitialized: false,
   cookie: {
@@ -87,7 +91,13 @@ passport.deserializeUser((user, done) => {
   done(null, user)
 })
 
-app.use(cors())
+// CORS configuration - allow credentials for JWT authentication
+app.use(cors({
+  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}))
 // Increase body parser limit to handle large template data (especially base64 images)
 app.use(express.json({ limit: '10mb' }))
 app.use(express.urlencoded({ extended: true, limit: '10mb' }))
@@ -124,6 +134,14 @@ app.use('/api', reportTemplateRoutes)
 app.use('/api', reportsRoutes)
 app.use('/api', dashboardRoutes)
 app.use('/api', realtimeRoutes)
+const modulePermissionsRoutes = require('./routes/modulePermissions')
+app.use('/api/module-permissions', modulePermissionsRoutes)
+const auditLogsRoutes = require('./routes/auditLogs')
+app.use('/api', auditLogsRoutes)
+
+// TBCC (Timestamp-Based Concurrency Control) routes
+const tbccRoutes = require('./routes/tbcc')
+app.use('/api/tbcc', tbccRoutes)
 
 async function ensureDefaultAccounts() {
   try {
@@ -164,9 +182,16 @@ Promise.all([whenOpen(adminConnection), whenOpen(superAdminConnection), whenOpen
     
     // Initialize real-time database sync (if enabled)
     if (process.env.ENABLE_DB_SYNC === 'true') {
+      console.log('🔄 Real-time database sync is ENABLED')
       const dbSyncService = require('./services/dbSync')
       dbSyncService.setAtlasConnections(adminConnection, superAdminConnection, bookingsConnection)
       await dbSyncService.start()
+    } else {
+      const primaryDb = process.env.MONGO_URI_ADMIN || 'mongodb://127.0.0.1:27017/museum_admin'
+      console.log('ℹ️  Real-time database sync is DISABLED (set ENABLE_DB_SYNC=true to enable)')
+      console.log('   Current setup: Using', 
+        primaryDb.startsWith('mongodb+srv://') ? 'MongoDB Atlas' : 'Local MongoDB',
+        'as primary database')
     }
     
     app.listen(PORT, () => console.log(`API running on http://localhost:${PORT}`))

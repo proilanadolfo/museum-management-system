@@ -1,0 +1,11 @@
+{
+  "database": "museum_superadmin",
+  "timestamp": "2025-11-30T12:49:42.133Z",
+  "collections": [
+    {
+      "name": "superadmins",
+      "documentCount": 1
+    }
+  ],
+  "totalDocuments": 1
+}

@@ -7,6 +7,12 @@ const AdminAttendance = ({ profileData }) => {
   const [attendanceLoading, setAttendanceLoading] = useState(false)
   const [filterType, setFilterType] = useState('all')
 
+  const getAuthHeaders = () => {
+    const raw = localStorage.getItem('admin_token')
+    const token = raw && raw !== 'null' && raw !== 'undefined' ? raw : null
+    return token ? { Authorization: `Bearer ${token}` } : {}
+  }
+
   const fetchTodayAttendance = async () => {
     setAttendanceLoading(true)
     try {
@@ -20,7 +26,25 @@ const AdminAttendance = ({ profileData }) => {
       const userData = JSON.parse(storedUser)
       const adminId = userData.id
 
-      const response = await fetch(`/api/attendance/today?adminId=${adminId}`)
+      const response = await fetch(`/api/attendance/today?adminId=${adminId}`, {
+        headers: {
+          'Content-Type': 'application/json',
+          ...getAuthHeaders()
+        }
+      })
+      // Only redirect on 401 if we have a token (means token is invalid/expired)
+      // BUT: Don't logout immediately - might be a temporary issue
+      const token = getAuthHeaders().Authorization
+      if (response.status === 401 && token) {
+        // Show error instead of logging out
+        setAttendanceError('Unauthorized: Please check your session or try refreshing the page')
+        setAttendanceLoading(false)
+        return
+      }
+      // If 401 and no token, just skip (component might be loading)
+      if (response.status === 401 && !token) {
+        return
+      }
       if (response.ok) {
         const data = await response.json()
         const records = data.records || []

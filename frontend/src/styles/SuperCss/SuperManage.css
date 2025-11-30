@@ -78,16 +78,17 @@
 
 .table-header { 
   display: grid; 
-  grid-template-columns: 1fr 1fr 1fr 1fr 1fr; 
+  grid-template-columns: 120px 1fr 1fr 1fr 100px 200px; 
   padding: 16px; 
   background: var(--warm-cream); 
   font-weight: 600; 
   color: var(--text-dark); 
+  gap: 12px;
 }
 
 .table-row { 
   display: grid; 
-  grid-template-columns: 1fr 1fr 1fr 1fr 1fr; 
+  grid-template-columns: 120px 1fr 1fr 1fr 100px 200px; 
   padding: 16px; 
   border-bottom: 1px solid rgba(220, 20, 60, 0.1); 
   align-items: center;
@@ -95,6 +96,7 @@
   z-index: 5 !important;
   pointer-events: auto !important;
   isolation: isolate;
+  gap: 12px;
 }
 
 .table-row:hover { 
@@ -154,6 +156,29 @@
   background: rgba(239, 68, 68, 0.15); 
   color: #dc2626; 
   border: 1px solid rgba(239, 68, 68, 0.3); 
+}
+
+/* Role badges */
+.role-badge {
+  display: inline-block;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-weight: 600;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.role-superadmin {
+  background: rgba(138, 43, 226, 0.15);
+  color: #8a2be2;
+  border: 1px solid rgba(138, 43, 226, 0.3);
+}
+
+.role-admin {
+  background: rgba(59, 130, 246, 0.15);
+  color: #3b82f6;
+  border: 1px solid rgba(59, 130, 246, 0.3);
 }
 
 /* Action buttons */
@@ -395,7 +420,7 @@
 /* Responsive */
 @media (max-width: 768px) {
   .table-header, .table-row { 
-    grid-template-columns: 1fr 1fr 1fr 1fr 1fr; 
+    grid-template-columns: 100px 1fr 1fr 1fr 80px 150px; 
     gap: 8px; 
     font-size: 12px;
   }

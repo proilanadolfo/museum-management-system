@@ -162,10 +162,29 @@ const museumSettingsSchema = new mongoose.Schema(
     missionSection: {
       type: missionSectionSchema,
       default: getDefaultMissionSection
+    },
+    // TBCC-style timestamps for optimistic concurrency on museum settings
+    rts: {
+      type: Number,
+      default: 0
+    },
+    wts: {
+      type: Number,
+      default: 0
     }
   },
   { timestamps: true }
 )
+
+// Initialize RTS/WTS on first save if not set
+museumSettingsSchema.pre('save', function (next) {
+  if (this.isNew) {
+    const now = Date.now()
+    if (!this.wts) this.wts = now
+    if (!this.rts) this.rts = now
+  }
+  next()
+})
 
 // Ensure only one settings document exists
 museumSettingsSchema.statics.getSettings = async function() {

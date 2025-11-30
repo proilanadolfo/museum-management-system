@@ -1,0 +1,16 @@
+[
+  {
+    "_id": "6928a0813a60d1a18fa92b78",
+    "idNumber": "2301114143",
+    "name": "Adolfo Proilan",
+    "type": "staff",
+    "checkInTime": "2025-11-27T19:03:29.232Z",
+    "checkOutTime": null,
+    "status": "checked-in",
+    "adminId": "69135809d705c0d36d4396ee",
+    "notes": "",
+    "createdAt": "2025-11-27T19:03:29.257Z",
+    "updatedAt": "2025-11-27T19:03:29.257Z",
+    "__v": 0
+  }
+]

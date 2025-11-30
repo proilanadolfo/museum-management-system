@@ -12,9 +12,13 @@ const path = require('path')
 const mongoose = require('mongoose')
 const Attendance = require('../models/Attendance')
 const AuditLog = require('../models/AuditLog')
+const Admin = require('../models/Admin')
+const SuperAdmin = require('../models/SuperAdmin')
 const { generateToken, generateRefreshToken, verifyToken } = require('../utils/jwt')
 const logger = require('../utils/logger')
 const { validateLogin, validatePasswordReset, validatePasswordResetCode } = require('../middleware/validation')
+const { authenticateSuperAdmin, authenticateAdmin, authenticateAdminOrSuperAdmin } = require('../middleware/auth')
+const { checkModuleAccess } = require('../middleware/moduleAccess')
 
 const router = express.Router()
 
@@ -71,43 +75,6 @@ const verifyRecaptcha = async (recaptchaToken) => {
     return { success: false, message: 'reCAPTCHA verification error' }
   }
 }
-
-// Create Admin and SuperAdmin models using connections
-const adminSchema = new (require('mongoose').Schema)({
-  username: { type: String, required: function() { return !this.googleId }, unique: true, index: true },
-  email: { type: String, required: true, unique: true },
-  passwordHash: { type: String, required: function() { return !this.googleId } },
-  name: { type: String, default: null },
-  profilePicture: { type: String, default: null },
-  googleId: { type: String, unique: true, sparse: true },
-  googleProfile: {
-    name: String,
-    picture: String,
-    verified_email: Boolean
-  },
-  resetToken: { type: String, default: null },
-  resetTokenExpiry: { type: Date, default: null },
-  status: { type: String, enum: ['active', 'inactive'], default: 'inactive' },
-}, { timestamps: true })
-
-const superAdminSchema = new (require('mongoose').Schema)({
-  username: { type: String, required: function() { return !this.googleId }, unique: true, index: true },
-  email: { type: String, required: true, unique: true },
-  passwordHash: { type: String, required: function() { return !this.googleId } },
-  name: { type: String, default: null },
-  profilePicture: { type: String, default: null },
-  googleId: { type: String, unique: true, sparse: true },
-  googleProfile: {
-    name: String,
-    picture: String,
-    verified_email: Boolean
-  },
-  resetToken: { type: String, default: null },
-  resetTokenExpiry: { type: Date, default: null },
-}, { timestamps: true })
-
-const Admin = adminConnection.model('Admin', adminSchema)
-const SuperAdmin = superAdminConnection.model('SuperAdmin', superAdminSchema)
 
 // Google OAuth Configuration
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || 'your-google-client-id'
@@ -1062,7 +1029,7 @@ router.post('/reset-password', validatePasswordResetCode, async (req, res) => {
 })
 
 // Create new administrator (Super Admin only)
-router.post('/admin/create', async (req, res) => {
+router.post('/admin/create', authenticateSuperAdmin, async (req, res) => {
   console.log('Admin create request received:', req.body)
   const { username, email, password } = req.body || {}
   console.log('Extracted data:', { username, email, password: password ? '***' : 'undefined' })
@@ -1101,11 +1068,14 @@ router.post('/admin/create', async (req, res) => {
     const passwordHash = await bcrypt.hash(finalPassword, 10)
     
     // Create new admin
+    const timestamp = Date.now()
     const newAdmin = await Admin.create({
       username,
       email,
       passwordHash,
-      status: 'inactive' // Explicitly set as inactive
+      status: 'inactive', // Explicitly set as inactive
+      wts: timestamp,
+      rts: timestamp
     })
 
     // Send email with generated password to the administrator
@@ -1140,14 +1110,214 @@ router.post('/admin/create', async (req, res) => {
   }
 })
 
-// Get all administrators
-router.get('/admin/list', async (req, res) => {
+// Get all administrators (Super Admin only)
+router.get('/admin/list', authenticateSuperAdmin, async (req, res) => {
   try {
     const admins = await Admin.find({}, { passwordHash: 0 }).sort({ createdAt: -1 })
     console.log('Admin list endpoint - returning admins:', admins.map(admin => ({ username: admin.username, status: admin.status })))
     res.json({ ok: true, admins })
   } catch (e) {
     res.status(500).json({ message: e.message })
+  }
+})
+
+// Get all super administrators (Super Admin only)
+router.get('/superadmin/list', authenticateSuperAdmin, async (req, res) => {
+  try {
+    const superAdmins = await SuperAdmin.find({}, { passwordHash: 0 }).sort({ createdAt: -1 })
+    console.log('SuperAdmin list endpoint - returning superadmins:', superAdmins.map(sa => ({ username: sa.username, email: sa.email })))
+    res.json({ ok: true, superAdmins })
+  } catch (e) {
+    res.status(500).json({ message: e.message })
+  }
+})
+
+// Create new super administrator (Super Admin only)
+router.post('/superadmin/create', authenticateSuperAdmin, async (req, res) => {
+  console.log('SuperAdmin create request received:', req.body)
+  const { username, email, password } = req.body || {}
+  console.log('Extracted data:', { username, email, password: password ? '***' : 'undefined' })
+  try {
+    // Check if username or email already exists in SuperAdmin collection
+    const existingUser = await SuperAdmin.findOne({ 
+      $or: [{ username }, { email }] 
+    })
+    if (existingUser) {
+      return res.status(400).json({ 
+        message: existingUser.username === username ? 'Username already exists' : 'Email already exists' 
+      })
+    }
+
+    // Check if email is already used by Admin
+    const existingAdmin = await Admin.findOne({ email })
+    if (existingAdmin) {
+      return res.status(400).json({ 
+        message: 'Email is already registered as Admin. Please use a different email.' 
+      })
+    }
+
+    // Generate random password if not provided
+    let finalPassword = password
+    if (!password) {
+      // Generate a random 12-character password with letters and numbers
+      const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
+      finalPassword = ''
+      for (let i = 0; i < 12; i++) {
+        finalPassword += chars.charAt(Math.floor(Math.random() * chars.length))
+      }
+      console.log('Generated random password for superadmin:', username)
+    }
+
+    // Hash password
+    const passwordHash = await bcrypt.hash(finalPassword, 10)
+    
+    // Create new superadmin
+    const newSuperAdmin = await SuperAdmin.create({
+      username,
+      email,
+      passwordHash
+    })
+
+    // Send email with generated password to the super administrator
+    const emailSent = await sendAdminCredentialsEmail(email, username, finalPassword)
+    
+    if (emailSent) {
+      console.log(`✅ SuperAdmin credentials sent successfully to: ${email}`)
+      res.json({ 
+        ok: true, 
+        message: 'Super Administrator created successfully. Login credentials have been sent to their email.',
+        superAdmin: { 
+          id: newSuperAdmin._id, 
+          username: newSuperAdmin.username, 
+          email: newSuperAdmin.email 
+        }
+      })
+    } else {
+      // Even if email fails, superadmin is created - just log the credentials
+      console.log(`⚠️ Email failed, but superadmin created. Credentials: ${username} / ${finalPassword}`)
+      res.json({ 
+        ok: true, 
+        message: 'Super Administrator created successfully. Please check console for login credentials (email sending failed).',
+        superAdmin: { 
+          id: newSuperAdmin._id, 
+          username: newSuperAdmin.username, 
+          email: newSuperAdmin.email 
+        }
+      })
+    }
+  } catch (e) {
+    res.status(500).json({ message: e.message })
+  }
+})
+
+// Update Super Admin credentials (username, email, password) - Super Admin only
+router.put('/superadmin/update/:id', authenticateSuperAdmin, async (req, res) => {
+  try {
+    const { id } = req.params
+    const { username, email, password } = req.body
+    
+    console.log('SuperAdmin update request:', { id, username, email, password: password ? '***' : 'undefined' })
+    
+    // Find the superadmin
+    const superAdmin = await SuperAdmin.findById(id)
+    if (!superAdmin) {
+      return res.status(404).json({ message: 'Super Administrator not found' })
+    }
+    
+    // Update username if provided
+    if (username && username !== superAdmin.username) {
+      // Check if username already exists
+      const existingUsername = await SuperAdmin.findOne({ 
+        username, 
+        _id: { $ne: id } 
+      })
+      if (existingUsername) {
+        return res.status(400).json({ message: 'Username already exists' })
+      }
+      superAdmin.username = username
+    }
+    
+    // Update email if provided
+    if (email && email !== superAdmin.email) {
+      // Check if email already exists
+      const existingEmail = await SuperAdmin.findOne({ 
+        email, 
+        _id: { $ne: id } 
+      })
+      if (existingEmail) {
+        return res.status(400).json({ message: 'Email already exists' })
+      }
+      superAdmin.email = email
+    }
+    
+    // Update password if provided
+    if (password) {
+      const passwordHash = await bcrypt.hash(password, 10)
+      superAdmin.passwordHash = passwordHash
+    }
+
+    await superAdmin.save()
+    
+    const responseSuperAdmin = {
+      _id: superAdmin._id,
+      username: superAdmin.username,
+      email: superAdmin.email,
+      createdAt: superAdmin.createdAt,
+      updatedAt: superAdmin.updatedAt
+    }
+    console.log('SuperAdmin updated successfully:', responseSuperAdmin)
+    
+    res.json({
+      ok: true,
+      message: 'Super Administrator updated successfully',
+      superAdmin: responseSuperAdmin
+    })
+    
+  } catch (error) {
+    console.error('Error updating superadmin:', error)
+    res.status(500).json({ message: 'Internal server error' })
+  }
+})
+
+// Delete Super Admin (permanent deletion) - Super Admin only
+router.delete('/superadmin/delete/:id', authenticateSuperAdmin, async (req, res) => {
+  try {
+    const { id } = req.params
+    
+    console.log('SuperAdmin delete request:', { id })
+    
+    // Find the superadmin
+    const superAdmin = await SuperAdmin.findById(id)
+    if (!superAdmin) {
+      return res.status(404).json({ message: 'Super Administrator not found' })
+    }
+    
+    // Prevent deleting yourself
+    const token = req.headers.authorization?.replace('Bearer ', '')
+    if (token) {
+      try {
+        const decoded = verifyToken(token)
+        if (decoded._id === id) {
+          return res.status(400).json({ message: 'You cannot delete your own account' })
+        }
+      } catch (err) {
+        // If token verification fails, continue with deletion
+      }
+    }
+    
+    // Delete the superadmin permanently
+    await SuperAdmin.findByIdAndDelete(id)
+    
+    console.log('SuperAdmin deleted successfully:', superAdmin.username)
+    
+    res.json({
+      ok: true,
+      message: 'Super Administrator deleted successfully'
+    })
+    
+  } catch (error) {
+    console.error('Error deleting superadmin:', error)
+    res.status(500).json({ message: 'Internal server error' })
   }
 })
 
@@ -1263,8 +1433,8 @@ router.post('/attendance/checkout', async (req, res) => {
   }
 })
 
-// Search attendance records
-router.get('/attendance/search', async (req, res) => {
+// Search attendance records (Admin only - requires attendance module access)
+router.get('/attendance/search', authenticateAdmin, checkModuleAccess('attendance'), async (req, res) => {
   try {
     const { q } = req.query
     
@@ -1348,8 +1518,8 @@ router.put('/attendance/:id/checkout', async (req, res) => {
   }
 })
 
-// Get today's attendance records
-router.get('/attendance/today', async (req, res) => {
+// Get today's attendance records (Admin only - requires attendance module access)
+router.get('/attendance/today', authenticateAdmin, checkModuleAccess('attendance'), async (req, res) => {
   try {
     const today = new Date()
     today.setHours(0, 0, 0, 0)
@@ -1377,8 +1547,8 @@ router.get('/attendance/today', async (req, res) => {
   }
 })
 
-// Get attendance records by date range
-router.get('/attendance/records', async (req, res) => {
+// Get attendance records by date range (Admin only - requires attendance module access)
+router.get('/attendance/records', authenticateAdmin, checkModuleAccess('attendance'), async (req, res) => {
   try {
     const { startDate, endDate, type } = req.query
     
@@ -1410,8 +1580,8 @@ router.get('/attendance/records', async (req, res) => {
   }
 })
 
-// Get attendance statistics
-router.get('/attendance/stats', async (req, res) => {
+// Get attendance statistics (Admin only - requires attendance module access)
+router.get('/attendance/stats', authenticateAdmin, checkModuleAccess('attendance'), async (req, res) => {
   try {
     const today = new Date()
     today.setHours(0, 0, 0, 0)
@@ -1453,8 +1623,8 @@ router.get('/attendance/stats', async (req, res) => {
   }
 })
 
-// Get attendance reports
-router.get('/attendance/reports', async (req, res) => {
+// Get attendance reports (Admin only - requires attendance module access)
+router.get('/attendance/reports', authenticateAdmin, checkModuleAccess('attendance'), async (req, res) => {
   try {
     const { adminId, type, startDate, endDate } = req.query
     let start, end
@@ -1535,19 +1705,45 @@ router.get('/superadmin/profile', async (req, res) => {
       return res.status(401).json({ message: 'No token provided' })
     }
 
-    // For demo purposes, we'll get the user from localStorage data
-    // In a real app, you'd verify the JWT token here
-    const userId = req.query.userId || req.headers['x-user-id']
-    
-    if (!userId) {
-      return res.status(400).json({ message: 'User ID required' })
+    // Verify JWT token to get the actual user ID
+    const { verifyToken } = require('../utils/jwt')
+    let decoded
+    try {
+      decoded = verifyToken(token)
+    } catch (error) {
+      console.error('JWT verification error:', error.message)
+      return res.status(401).json({ message: 'Invalid or expired token' })
     }
 
-    const superadmin = await SuperAdmin.findById(userId).select('username email name profilePicture')
+    if (!decoded || decoded.role !== 'superadmin') {
+      return res.status(403).json({ message: 'Access denied' })
+    }
+
+    // Use the ID from the token (more secure than query parameter)
+    const userId = decoded.id
+    
+    if (!userId) {
+      console.error('No user ID in token:', decoded)
+      return res.status(400).json({ message: 'User ID not found in token' })
+    }
+
+    console.log('Fetching SuperAdmin profile for userId:', userId)
+    
+    // Try to find by ID (handles both string and ObjectId)
+    let superadmin = await SuperAdmin.findById(userId).select('username email name profilePicture')
+    
+    // If not found, try to find by email as fallback (for debugging)
+    if (!superadmin && decoded.email) {
+      console.log('Not found by ID, trying email:', decoded.email)
+      superadmin = await SuperAdmin.findOne({ email: decoded.email }).select('username email name profilePicture')
+    }
     
     if (!superadmin) {
+      console.error('SuperAdmin not found:', { userId, email: decoded.email, decoded })
       return res.status(404).json({ message: 'SuperAdmin not found' })
     }
+
+    console.log('SuperAdmin profile found:', { id: superadmin._id, username: superadmin.username, email: superadmin.email })
 
     res.json({
       name: superadmin.name || superadmin.username,
@@ -1557,7 +1753,7 @@ router.get('/superadmin/profile', async (req, res) => {
     })
   } catch (error) {
     console.error('Error fetching superadmin profile:', error)
-    res.status(500).json({ message: 'Internal server error' })
+    res.status(500).json({ message: 'Internal server error', error: error.message })
   }
 })
 
@@ -1570,17 +1766,50 @@ router.get('/admin/profile', async (req, res) => {
       return res.status(401).json({ message: 'No token provided' })
     }
 
-    const userId = req.query.userId || req.headers['x-user-id']
-    
-    if (!userId) {
-      return res.status(400).json({ message: 'User ID required' })
+    // Verify JWT token to get the actual user ID
+    const { verifyToken } = require('../utils/jwt')
+    let decoded
+    try {
+      decoded = verifyToken(token)
+    } catch (error) {
+      console.error('JWT verification error:', error.message)
+      return res.status(401).json({ message: 'Invalid or expired token' })
     }
 
-    const admin = await Admin.findById(userId).select('username email name profilePicture')
+    if (!decoded || decoded.role !== 'admin') {
+      return res.status(403).json({ message: 'Access denied' })
+    }
+
+    // Use the ID from the token (more secure than query parameter)
+    const userId = decoded.id
+    
+    if (!userId) {
+      console.error('No user ID in token:', decoded)
+      return res.status(400).json({ message: 'User ID not found in token' })
+    }
+
+    console.log('Fetching Admin profile for userId:', userId)
+    
+    // Try to find by ID (handles both string and ObjectId)
+    let admin = await Admin.findById(userId).select('username email name profilePicture')
+    
+    // If not found, try to find by email as fallback
+    if (!admin && decoded.email) {
+      console.log('Not found by ID, trying email:', decoded.email)
+      admin = await Admin.findOne({ email: decoded.email }).select('username email name profilePicture')
+      if (admin) {
+        console.log('✅ Admin found by email fallback:', { email: decoded.email, id: admin._id.toString() })
+      }
+    }
     
     if (!admin) {
+      console.error('❌ Admin not found:', { userId, email: decoded.email, decoded })
       return res.status(404).json({ message: 'Admin not found' })
     }
+    
+    console.log('✅ Admin profile found:', { id: admin._id.toString(), username: admin.username, email: admin.email })
+
+    console.log('Admin profile found:', { id: admin._id, username: admin.username, email: admin.email })
 
     res.json({
       name: admin.name || admin.username,
@@ -1590,7 +1819,7 @@ router.get('/admin/profile', async (req, res) => {
     })
   } catch (error) {
     console.error('Error fetching admin profile:', error)
-    res.status(500).json({ message: 'Internal server error' })
+    res.status(500).json({ message: 'Internal server error', error: error.message })
   }
 })
 
@@ -1721,13 +1950,19 @@ router.put('/admin/update-profile/:id', (req, res, next) => {
   }
 })
 
-// Update Admin credentials (username, email, password)
-router.put('/admin/update/:id', async (req, res) => {
+// Update Admin credentials (username, email, password) - Super Admin only
+router.put('/admin/update/:id', authenticateSuperAdmin, async (req, res) => {
   try {
     const { id } = req.params
-    const { username, email, password } = req.body
+    const { username, email, password, clientTimestamp } = req.body
     
-    console.log('Admin update request:', { id, username, email, password: password ? '***' : 'undefined' })
+    if (clientTimestamp === undefined || clientTimestamp === null) {
+      return res.status(400).json({
+        message: 'clientTimestamp is required for concurrency control'
+      })
+    }
+    
+    console.log('Admin update request:', { id, username, email, password: password ? '***' : 'undefined', clientTimestamp })
     
     // Find the admin
     const admin = await Admin.findById(id)
@@ -1735,8 +1970,13 @@ router.put('/admin/update/:id', async (req, res) => {
       return res.status(404).json({ message: 'Administrator not found' })
     }
     
-    // Prepare update data
-    const updateData = {}
+    const currentTimestamp = Math.max(admin.wts || 0, admin.updatedAt?.getTime() || 0)
+    if (Number(clientTimestamp) < currentTimestamp) {
+      return res.status(409).json({
+        message: 'Transaction aborted — outdated data. Please refresh.',
+        currentTimestamp
+      })
+    }
     
     // Update username if provided
     if (username && username !== admin.username) {
@@ -1748,7 +1988,7 @@ router.put('/admin/update/:id', async (req, res) => {
       if (existingUsername) {
         return res.status(400).json({ message: 'Username already exists' })
       }
-      updateData.username = username
+      admin.username = username
     }
     
     // Update email if provided
@@ -1761,28 +2001,35 @@ router.put('/admin/update/:id', async (req, res) => {
       if (existingEmail) {
         return res.status(400).json({ message: 'Email already exists' })
       }
-      updateData.email = email
+      admin.email = email
     }
     
     // Update password if provided
     if (password) {
       const passwordHash = await bcrypt.hash(password, 10)
-      updateData.passwordHash = passwordHash
+      admin.passwordHash = passwordHash
     }
     
-    // Update the admin
-    const updatedAdmin = await Admin.findByIdAndUpdate(
-      id,
-      updateData,
-      { new: true, runValidators: true }
-    ).select('username email createdAt')
+    const now = Date.now()
+    admin.wts = now
+    admin.rts = Math.max(admin.rts || 0, now)
+
+    await admin.save()
     
-    console.log('Admin updated successfully:', updatedAdmin)
+    const responseAdmin = {
+      _id: admin._id,
+      username: admin.username,
+      email: admin.email,
+      createdAt: admin.createdAt,
+      updatedAt: admin.updatedAt
+    }
+    console.log('Admin updated successfully:', responseAdmin)
     
     res.json({
       ok: true,
       message: 'Administrator updated successfully',
-      admin: updatedAdmin
+      admin: responseAdmin,
+      newTimestamp: admin.wts
     })
     
   } catch (error) {
@@ -1791,8 +2038,8 @@ router.put('/admin/update/:id', async (req, res) => {
   }
 })
 
-// Deactivate Admin
-router.put('/admin/deactivate/:id', async (req, res) => {
+// Deactivate / activate Admin (Super Admin only)
+router.put('/admin/deactivate/:id', authenticateSuperAdmin, async (req, res) => {
   try {
     const { id } = req.params
     const { status } = req.body
@@ -1826,21 +2073,52 @@ router.put('/admin/deactivate/:id', async (req, res) => {
   }
 })
 
-// Delete Admin (permanent deletion)
-router.delete('/admin/delete/:id', async (req, res) => {
+// Delete Admin (permanent deletion) - Super Admin only
+router.delete('/admin/delete/:id', authenticateSuperAdmin, async (req, res) => {
   try {
     const { id } = req.params
     
-    console.log('Admin delete request:', { id })
+    console.log('Admin delete request:', { id, idType: typeof id })
     
-    // Find the admin
-    const admin = await Admin.findById(id)
+    // Validate ID format
+    if (!id || id.trim() === '') {
+      return res.status(400).json({ message: 'Admin ID is required' })
+    }
+    
+    // Check if ID is valid ObjectId format
+    const mongoose = require('mongoose')
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      console.error('Invalid admin ID format:', id)
+      return res.status(400).json({ message: 'Invalid admin ID format' })
+    }
+    
+    // Find the admin by ID
+    let admin = await Admin.findById(id)
+    
+    // If not found by ID, try to find by email as fallback (for debugging)
     if (!admin) {
+      console.log('Admin not found by ID, checking if ID might be email...')
+      // Try to find by email if the ID looks like an email
+      if (id.includes('@')) {
+        admin = await Admin.findOne({ email: id })
+        if (admin) {
+          console.log('Admin found by email fallback:', admin.email)
+        }
+      }
+    }
+    
+    if (!admin) {
+      console.error('Admin not found:', { id, searchedBy: 'ID' })
+      // Try to list all admins to help debug
+      const allAdmins = await Admin.find({}, { _id: 1, username: 1, email: 1 })
+      console.log('Available admins:', allAdmins.map(a => ({ id: a._id.toString(), username: a.username, email: a.email })))
       return res.status(404).json({ message: 'Administrator not found' })
     }
     
+    console.log('Admin found for deletion:', { id: admin._id.toString(), username: admin.username, email: admin.email })
+    
     // Delete the admin permanently
-    await Admin.findByIdAndDelete(id)
+    await Admin.findByIdAndDelete(admin._id)
     
     console.log('Admin deleted successfully:', admin.username)
     
@@ -1851,12 +2129,13 @@ router.delete('/admin/delete/:id', async (req, res) => {
     
   } catch (error) {
     console.error('Error deleting admin:', error)
-    res.status(500).json({ message: 'Internal server error' })
+    console.error('Error stack:', error.stack)
+    res.status(500).json({ message: 'Internal server error', error: error.message })
   }
 })
 
-// Test endpoint to check database directly
-router.get('/admin/test-db', async (req, res) => {
+// Test endpoint to check database directly (Super Admin only)
+router.get('/admin/test-db', authenticateSuperAdmin, async (req, res) => {
   try {
     console.log('=== DATABASE TEST ===')
     
@@ -1907,8 +2186,8 @@ router.get('/admin/test-db', async (req, res) => {
   }
 })
 
-// Migration endpoint to fix all existing admins
-router.post('/admin/migrate-status', async (req, res) => {
+// Migration endpoint to fix all existing admins (Super Admin only)
+router.post('/admin/migrate-status', authenticateSuperAdmin, async (req, res) => {
   try {
     console.log('Starting admin status migration...')
     

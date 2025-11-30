@@ -4,19 +4,22 @@ import '../../styles/SuperCss/SuperManage.css'
 
 const SuperManage = () => {
   const [adminList, setAdminList] = useState([])
+  const [superAdminList, setSuperAdminList] = useState([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
   const [showAddModal, setShowAddModal] = useState(false)
   const [addFormData, setAddFormData] = useState({
     username: '',
-    email: ''
+    email: '',
+    role: 'admin' // 'admin' or 'superadmin'
   })
   const [addLoading, setAddLoading] = useState(false)
   const [addError, setAddError] = useState('')
   const [addSuccess, setAddSuccess] = useState('')
   const [showEditModal, setShowEditModal] = useState(false)
-  const [editingAdmin, setEditingAdmin] = useState(null)
+  const [editingUser, setEditingUser] = useState(null)
+  const [editingUserRole, setEditingUserRole] = useState('admin') // 'admin' or 'superadmin'
   const [editFormData, setEditFormData] = useState({
     username: '',
     email: ''
@@ -24,18 +27,79 @@ const SuperManage = () => {
   const [editLoading, setEditLoading] = useState(false)
   const [editError, setEditError] = useState('')
   const [editSuccess, setEditSuccess] = useState('')
+  const [editVersion, setEditVersion] = useState(null)
+
+  // Helper function to get auth headers
+  const getAuthHeaders = () => {
+    const raw = localStorage.getItem('superadmin_token')
+    const token = raw && raw !== 'null' && raw !== 'undefined' ? raw : null
+    return token ? { Authorization: `Bearer ${token}` } : {}
+  }
+
+  // Handle 401 errors - redirect to login
+  const handleAuthError = useCallback(() => {
+    localStorage.removeItem('superadmin_token')
+    localStorage.removeItem('superadmin_user')
+    window.location.href = '/login'
+  }, [])
 
   const fetchAdminList = useCallback(async () => {
     try {
-      const listResponse = await fetch('/api/admin/list')
-      if (listResponse.ok) {
-        const listData = await listResponse.json()
-        setAdminList(listData.admins || [])
+      const token = getAuthHeaders().Authorization
+      if (!token) {
+        // No token - don't fetch, but don't redirect (might be timing issue)
+        // Only redirect if we actually get 401 from API
+        console.log('No token available, skipping fetch')
+        return
+      }
+
+      const [adminResponse, superAdminResponse] = await Promise.all([
+        fetch('/api/admin/list', {
+          headers: {
+            'Content-Type': 'application/json',
+            ...getAuthHeaders()
+          }
+        }),
+        fetch('/api/superadmin/list', {
+          headers: {
+            'Content-Type': 'application/json',
+            ...getAuthHeaders()
+          }
+        })
+      ])
+      
+      // Only logout if BOTH return 401 (strong signal token is invalid)
+      // BUT: Even then, don't force logout - might be temporary network issue
+      // Let user continue working and manually logout if needed
+      if (adminResponse.status === 401 && superAdminResponse.status === 401) {
+        setError('Unauthorized: Please check your session or try refreshing the page')
+        return
+      }
+      
+      if (adminResponse.ok) {
+        const adminData = await adminResponse.json()
+        setAdminList(adminData.admins || [])
+      } else if (adminResponse.status !== 401) {
+        // Only show error if it's not a 401 (401 is handled above)
+        const errorData = await adminResponse.json().catch(() => ({}))
+        setError(errorData.message || 'Failed to fetch admin list')
+        console.error('Failed to fetch admin list:', adminResponse.status, adminResponse.statusText)
+      }
+      
+      if (superAdminResponse.ok) {
+        const superAdminData = await superAdminResponse.json()
+        setSuperAdminList(superAdminData.superAdmins || [])
+      } else if (superAdminResponse.status !== 401) {
+        // Only show error if it's not a 401 (401 is handled above)
+        const errorData = await superAdminResponse.json().catch(() => ({}))
+        setError(errorData.message || 'Failed to fetch superadmin list')
+        console.error('Failed to fetch superadmin list:', superAdminResponse.status, superAdminResponse.statusText)
       }
     } catch (error) {
-      console.log('Error fetching admin list:', error)
+      console.log('Error fetching user lists:', error)
+      setError('Network error. Please try again.')
     }
-  }, [])
+  }, [handleAuthError])
 
   useEffect(() => {
     fetchAdminList()
@@ -59,11 +123,14 @@ const SuperManage = () => {
     }
   }, [fetchAdminList])
 
-  const handleEditAdmin = (admin) => {
-    setEditingAdmin(admin)
+  const handleEditUser = (user, role) => {
+    const timestamp = user?.updatedAt ? new Date(user.updatedAt).getTime() : Date.now()
+    setEditVersion(timestamp)
+    setEditingUser(user)
+    setEditingUserRole(role)
     setEditFormData({
-      username: admin.username || '',
-      email: admin.email || ''
+      username: user.username || '',
+      email: user.email || ''
     })
     setShowEditModal(true)
     setEditError('')
@@ -96,11 +163,20 @@ const SuperManage = () => {
         return
       }
 
-      const res = await fetch('/api/admin/create', {
+      const endpoint = addFormData.role === 'superadmin' ? '/api/superadmin/create' : '/api/admin/create'
+      const res = await fetch(endpoint, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...getAuthHeaders()
+        },
         body: JSON.stringify(payload)
       })
+
+      if (res.status === 401) {
+        handleAuthError()
+        return
+      }
 
       const data = await res.json().catch(() => ({}))
       if (!res.ok) {
@@ -117,12 +193,13 @@ const SuperManage = () => {
         return
       }
 
-      const successMessage = 'Administrator created successfully! Password has been generated and sent to their email.'
+      const roleLabel = addFormData.role === 'superadmin' ? 'Super Administrator' : 'Administrator'
+      const successMessage = `${roleLabel} created successfully! Password has been generated and sent to their email.`
       setAddSuccess(successMessage)
       await fetchAdminList()
 
       Swal.fire({
-        title: 'Administrator Created',
+        title: `${roleLabel} Created`,
         text: successMessage,
         icon: 'success',
         confirmButtonColor: '#dc143c'
@@ -131,7 +208,7 @@ const SuperManage = () => {
       setTimeout(() => {
         setShowAddModal(false)
         setAddSuccess('')
-        setAddFormData({ username: '', email: '' })
+        setAddFormData({ username: '', email: '', role: 'admin' })
       }, 1500)
     } catch (err) {
       const message = 'Network error. Please try again.'
@@ -150,33 +227,74 @@ const SuperManage = () => {
 
   const handleEditSubmit = async (e) => {
     e.preventDefault()
+    if (!editingUser?._id) {
+      setEditError('No user selected.')
+      return
+    }
+
     setEditLoading(true)
     setEditError('')
     setEditSuccess('')
 
     try {
-      const adminUpdateData = {
+      const updateData = {
         username: editFormData.username,
         email: editFormData.email
       }
       
-      const response = await fetch(`/api/admin/update/${editingAdmin._id}`, {
+      // Add clientTimestamp only for admin updates
+      if (editingUserRole === 'admin') {
+        updateData.clientTimestamp = editVersion ?? 0
+      }
+      
+      const endpoint = editingUserRole === 'superadmin' 
+        ? `/api/superadmin/update/${editingUser._id}`
+        : `/api/admin/update/${editingUser._id}`
+      
+      const response = await fetch(endpoint, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
+          ...getAuthHeaders()
         },
-        body: JSON.stringify(adminUpdateData)
+        body: JSON.stringify(updateData)
       })
+
+      if (response.status === 401) {
+        handleAuthError()
+        return
+      }
 
       const data = await response.json()
 
+      if (response.status === 409) {
+        const message = data.message || 'Transaction aborted — outdated data. Please refresh.'
+        setEditError(message)
+        Swal.fire({
+          title: 'Outdated Data',
+          text: message,
+          icon: 'warning',
+          confirmButtonColor: '#dc143c'
+        })
+        if (data.currentTimestamp) {
+          setEditVersion(data.currentTimestamp)
+        }
+        await fetchAdminList()
+        setEditLoading(false)
+        return
+      }
+
       if (response.ok) {
-        const successMessage = 'Administrator updated successfully!'
+        const roleLabel = editingUserRole === 'superadmin' ? 'Super Administrator' : 'Administrator'
+        const successMessage = `${roleLabel} updated successfully!`
         setEditSuccess(successMessage)
+        if (data.newTimestamp) {
+          setEditVersion(data.newTimestamp)
+        }
         await fetchAdminList()
 
         Swal.fire({
-          title: 'Administrator Updated',
+          title: `${roleLabel} Updated`,
           text: successMessage,
           icon: 'success',
           confirmButtonColor: '#dc143c'
@@ -185,7 +303,11 @@ const SuperManage = () => {
         setTimeout(() => {
           setShowEditModal(false)
           setEditSuccess('')
-        }, 2000)
+          setEditingUser(null)
+          setEditingUserRole('admin')
+          setEditFormData({ username: '', email: '' })
+          setEditVersion(null)
+        }, 1000)
       } else {
         const message = data.message || 'Failed to update administrator'
         setEditError(message)
@@ -213,10 +335,26 @@ const SuperManage = () => {
     }
   }
 
-  const handleDeleteAdmin = async (adminId) => {
+  const handleDeleteUser = async (userId, role) => {
+    const roleLabel = role === 'superadmin' ? 'Super Administrator' : 'Administrator'
+    
+    // Ensure userId is properly formatted as string
+    const userIdStr = String(userId || '').trim()
+    if (!userIdStr || userIdStr === 'undefined' || userIdStr === 'null') {
+      Swal.fire({
+        title: 'Error',
+        text: 'User ID is missing. Cannot delete user.',
+        icon: 'error',
+        confirmButtonColor: '#dc143c'
+      })
+      return
+    }
+    
+    console.log('Deleting user:', { userId: userIdStr, role, originalUserId: userId, userIdType: typeof userId })
+    
     const confirmResult = await Swal.fire({
-      title: 'Delete Administrator?',
-      text: 'This will permanently delete the administrator account. This action cannot be undone. Continue?',
+      title: `Delete ${roleLabel}?`,
+      text: `This will permanently delete the ${roleLabel.toLowerCase()} account. This action cannot be undone. Continue?`,
       icon: 'warning',
       showCancelButton: true,
       confirmButtonColor: '#dc143c',
@@ -234,17 +372,29 @@ const SuperManage = () => {
     setEditSuccess('')
 
     try {
-      const response = await fetch(`/api/admin/delete/${adminId}`, {
+      const endpoint = role === 'superadmin' 
+        ? `/api/superadmin/delete/${userIdStr}`
+        : `/api/admin/delete/${userIdStr}`
+      
+      console.log('Delete request to:', endpoint)
+      
+      const response = await fetch(endpoint, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
+          ...getAuthHeaders()
         }
       })
+
+      if (response.status === 401) {
+        handleAuthError()
+        return
+      }
 
       const data = await response.json()
 
       if (response.ok) {
-        const successMessage = 'Administrator deleted successfully!'
+        const successMessage = `${roleLabel} deleted successfully!`
         setEditSuccess(successMessage)
         await fetchAdminList()
 
@@ -257,7 +407,7 @@ const SuperManage = () => {
         
         setTimeout(() => {
           setEditSuccess('')
-        }, 2000)
+        }, 1000)
       } else {
         const message = data.message || 'Failed to delete administrator'
         setEditError(message)
@@ -303,7 +453,7 @@ const SuperManage = () => {
               console.log('Before setShowAddModal, current state:', showAddModal)
               setAddError('')
               setAddSuccess('')
-              setAddFormData({ username: '', email: '' })
+              setAddFormData({ username: '', email: '', role: 'admin' })
               setShowAddModal(true)
               console.log('After setShowAddModal(true)')
               setTimeout(() => {
@@ -327,36 +477,31 @@ const SuperManage = () => {
       
       <div className="admin-table">
         <div className="table-header">
+          <span>Role</span>
           <span>Username</span>
           <span>Email</span>
           <span>Created</span>
           <span>Status</span>
           <span>Actions</span>
         </div>
-        {adminList.map((admin) => (
-          <div key={admin._id} className="table-row">
-            <span className="admin-username">{admin.username}</span>
-            <span className="admin-email" title={admin.email}>
-              {admin.email.length > 25 ? admin.email.substring(0, 25) + '...' : admin.email}
+        {/* Display Super Admins first */}
+        {superAdminList.map((superAdmin) => (
+          <div key={superAdmin._id} className="table-row">
+            <span className="role-badge role-superadmin">Super Admin</span>
+            <span className="admin-username">{superAdmin.username}</span>
+            <span className="admin-email" title={superAdmin.email}>
+              {superAdmin.email.length > 25 ? superAdmin.email.substring(0, 25) + '...' : superAdmin.email}
             </span>
-            <span className="admin-created">{new Date(admin.createdAt).toLocaleDateString()}</span>
-            <span className={`status-badge ${admin.status === 'active' ? 'status-active' : 'status-inactive'}`}>
-              {admin.status === 'active' ? 'Active' : 'Inactive'}
-            </span>
+            <span className="admin-created">{new Date(superAdmin.createdAt).toLocaleDateString()}</span>
+            <span className="status-badge status-active">Active</span>
             <span className="actions">
               <button 
                 type="button"
                 className="edit-btn"
                 onClick={(e) => {
-                  console.log('Edit button clicked!', admin)
                   e.preventDefault()
                   e.stopPropagation()
-                  console.log('Before handleEditAdmin, showEditModal:', showEditModal)
-                  handleEditAdmin(admin)
-                  console.log('After handleEditAdmin')
-                  setTimeout(() => {
-                    console.log('Edit modal state after timeout:', showEditModal)
-                  }, 100)
+                  handleEditUser(superAdmin, 'superadmin')
                 }}
                 onMouseDown={(e) => {
                   e.preventDefault()
@@ -371,11 +516,10 @@ const SuperManage = () => {
                 type="button"
                 className="delete-btn"
                 onClick={(e) => {
-                  console.log('Delete button clicked!', admin._id)
                   e.preventDefault()
                   e.stopPropagation()
                   e.nativeEvent.stopImmediatePropagation()
-                  handleDeleteAdmin(admin._id)
+                  handleDeleteUser(superAdmin._id || superAdmin.id, 'superadmin')
                 }}
                 onMouseDown={(e) => {
                   e.preventDefault()
@@ -389,9 +533,60 @@ const SuperManage = () => {
             </span>
           </div>
         ))}
-        {adminList.length === 0 && (
+        {/* Display Admins */}
+        {adminList.map((admin) => (
+          <div key={admin._id} className="table-row">
+            <span className="role-badge role-admin">Admin</span>
+            <span className="admin-username">{admin.username}</span>
+            <span className="admin-email" title={admin.email}>
+              {admin.email.length > 25 ? admin.email.substring(0, 25) + '...' : admin.email}
+            </span>
+            <span className="admin-created">{new Date(admin.createdAt).toLocaleDateString()}</span>
+            <span className={`status-badge ${admin.status === 'active' ? 'status-active' : 'status-inactive'}`}>
+              {admin.status === 'active' ? 'Active' : 'Inactive'}
+            </span>
+            <span className="actions">
+              <button 
+                type="button"
+                className="edit-btn"
+                onClick={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  handleEditUser(admin, 'admin')
+                }}
+                onMouseDown={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                }}
+                disabled={editLoading}
+                style={{ position: 'relative', zIndex: 9999 }}
+              >
+                ✏️ Edit
+              </button>
+              <button 
+                type="button"
+                className="delete-btn"
+                onClick={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  e.nativeEvent.stopImmediatePropagation()
+                  handleDeleteUser(admin._id || admin.id, 'admin')
+                }}
+                onMouseDown={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                }}
+                disabled={editLoading}
+                style={{ position: 'relative', zIndex: 9999 }}
+              >
+                🗑️ Delete
+              </button>
+            </span>
+          </div>
+        ))}
+        {adminList.length === 0 && superAdminList.length === 0 && (
           <div className="table-row">
-            <span className="empty-message">No administrators found</span>
+            <span className="empty-message">No users found</span>
           </div>
         )}
       </div>
@@ -409,17 +604,17 @@ const SuperManage = () => {
           onClick={(e) => {
           if (e.target === e.currentTarget) {
             setShowAddModal(false)
-            setAddFormData({ username: '', email: '' })
+            setAddFormData({ username: '', email: '', role: 'admin' })
             setAddError('')
             setAddSuccess('')
           }
         }}>
           <div className="modal-content">
             <div className="modal-header">
-              <h3>Add Administrator</h3>
+              <h3>Add User</h3>
               <button onClick={() => {
                 setShowAddModal(false)
-                setAddFormData({ username: '', email: '' })
+                setAddFormData({ username: '', email: '', role: 'admin' })
                 setAddError('')
                 setAddSuccess('')
               }}>×</button>
@@ -428,6 +623,24 @@ const SuperManage = () => {
               {addError && <div className="error-message">{addError}</div>}
               {addSuccess && <div className="success-message">{addSuccess}</div>}
               <form onSubmit={handleAddSubmit}>
+                <div className="form-group">
+                  <label>Role</label>
+                  <select
+                    value={addFormData.role}
+                    onChange={(e) => setAddFormData({ ...addFormData, role: e.target.value })}
+                    required
+                    style={{
+                      width: '100%',
+                      padding: '10px',
+                      borderRadius: '6px',
+                      border: '1px solid #ddd',
+                      fontSize: '14px'
+                    }}
+                  >
+                    <option value="admin">Administrator</option>
+                    <option value="superadmin">Super Administrator</option>
+                  </select>
+                </div>
                 <div className="form-group">
                   <label>Username</label>
                   <input
@@ -449,12 +662,12 @@ const SuperManage = () => {
                 <div className="modal-actions">
                   <button type="button" onClick={() => {
                     setShowAddModal(false)
-                    setAddFormData({ username: '', email: '' })
+                    setAddFormData({ username: '', email: '', role: 'admin' })
                     setAddError('')
                     setAddSuccess('')
                   }}>Cancel</button>
                   <button type="submit" disabled={addLoading}>
-                    {addLoading ? 'Creating...' : 'Create Administrator'}
+                    {addLoading ? 'Creating...' : `Create ${addFormData.role === 'superadmin' ? 'Super Administrator' : 'Administrator'}`}
                   </button>
                 </div>
               </form>
@@ -479,16 +692,22 @@ const SuperManage = () => {
             setEditFormData({ username: '', email: '' })
             setEditError('')
             setEditSuccess('')
+            setEditingUser(null)
+            setEditingUserRole('admin')
+            setEditVersion(null)
           }
         }}>
           <div className="modal-content">
             <div className="modal-header">
-              <h3>Edit Administrator</h3>
+              <h3>Edit {editingUserRole === 'superadmin' ? 'Super Administrator' : 'Administrator'}</h3>
               <button onClick={() => {
                 setShowEditModal(false)
                 setEditFormData({ username: '', email: '' })
                 setEditError('')
                 setEditSuccess('')
+                setEditingUser(null)
+                setEditingUserRole('admin')
+                setEditVersion(null)
               }}>×</button>
             </div>
             <div className="modal-body">
@@ -519,9 +738,12 @@ const SuperManage = () => {
                     setEditFormData({ username: '', email: '' })
                     setEditError('')
                     setEditSuccess('')
+                    setEditingUser(null)
+                    setEditingUserRole('admin')
+                    setEditVersion(null)
                   }}>Cancel</button>
                   <button type="submit" disabled={editLoading}>
-                    {editLoading ? 'Updating...' : 'Update Administrator'}
+                    {editLoading ? 'Updating...' : `Update ${editingUserRole === 'superadmin' ? 'Super Administrator' : 'Administrator'}`}
                   </button>
                 </div>
               </form>

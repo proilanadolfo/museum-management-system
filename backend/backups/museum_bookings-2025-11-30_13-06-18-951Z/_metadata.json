@@ -1,0 +1,35 @@
+{
+  "database": "museum_bookings",
+  "timestamp": "2025-11-30T13:06:20.488Z",
+  "collections": [
+    {
+      "name": "announcements",
+      "documentCount": 4
+    },
+    {
+      "name": "galleries",
+      "documentCount": 6
+    },
+    {
+      "name": "museumsettings",
+      "documentCount": 2
+    },
+    {
+      "name": "tbccdataitems",
+      "documentCount": 1
+    },
+    {
+      "name": "auditlogs",
+      "documentCount": 241
+    },
+    {
+      "name": "bookings",
+      "documentCount": 0
+    },
+    {
+      "name": "reporttemplates",
+      "documentCount": 2
+    }
+  ],
+  "totalDocuments": 256
+}

@@ -1,0 +1,19 @@
+{
+  "database": "museum_admin",
+  "timestamp": "2025-11-30T12:51:31.758Z",
+  "collections": [
+    {
+      "name": "attendances",
+      "documentCount": 1
+    },
+    {
+      "name": "modulepermissions",
+      "documentCount": 10
+    },
+    {
+      "name": "admins",
+      "documentCount": 1
+    }
+  ],
+  "totalDocuments": 12
+}

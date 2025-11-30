@@ -10,11 +10,24 @@ const SuperDashboard = () => {
     todayLogins: 0
   })
 
+  // Get auth headers helper
+  const getAuthHeaders = () => {
+    const token = localStorage.getItem('superadmin_token')
+    return token ? { Authorization: `Bearer ${token}` } : {}
+  }
+
   // Fetch data function
   const fetchData = async () => {
     try {
-      // Fetch admin count from database
-      const countResponse = await fetch('/api/admin/count')
+      // Fetch admin count from database (with auth header for consistency)
+      const countResponse = await fetch('/api/admin/count', {
+        headers: {
+          'Content-Type': 'application/json',
+          ...getAuthHeaders()
+        }
+      })
+      
+      // Don't logout on 401 for optional dashboard data - just use fallback
       if (countResponse.ok) {
         const countData = await countResponse.json()
         setDashboardData({
@@ -24,7 +37,7 @@ const SuperDashboard = () => {
           todayLogins: countData.todayLogins || 0
         })
       } else {
-        // Silent fallback to static data
+        // Silent fallback to static data (including 401 errors)
         setDashboardData({
           totalAdmins: 6,
           activeAdmins: 6,

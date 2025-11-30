@@ -30,6 +30,7 @@ const SuperSettins = () => {
         }
       })
 
+      // Don't logout on 401 for optional logo fetch - just use default (no logo)
       if (response.ok) {
         const data = await response.json()
         if (data.success && data.data.profileLogo) {
@@ -37,19 +38,14 @@ const SuperSettins = () => {
           setLogoPreview(`http://localhost:5000/${data.data.profileLogo}`)
         }
       } else if (response.status === 401) {
-        console.error('Authentication failed - token may be expired')
-        Swal.fire({
-          title: 'Session Expired',
-          text: 'Please log in again to continue.',
-          icon: 'warning',
-          confirmButtonColor: '#dc143c'
-        }).then(() => {
-          localStorage.removeItem('superadmin_token')
-          window.location.href = '/login'
-        })
+        // Silently handle 401 - don't logout, just don't show logo
+        console.log('Logo fetch failed: Unauthorized - using default logo')
+        setCurrentLogo(null)
+        setLogoPreview(null)
       }
     } catch (error) {
       console.error('Error fetching logo:', error)
+      // Don't logout on network errors either
     } finally {
       setFetching(false)
     }
@@ -162,15 +158,27 @@ const SuperSettins = () => {
       } else {
         // Handle authentication errors
         if (response.status === 401 || response.status === 403) {
-          Swal.fire({
-            title: 'Authentication Failed',
-            text: data.message || 'Your session has expired. Please log in again.',
-            icon: 'warning',
-            confirmButtonColor: '#dc143c'
-          }).then(() => {
-            localStorage.removeItem('superadmin_token')
-            window.location.href = '/login'
-          })
+          const currentToken = localStorage.getItem('superadmin_token')
+          if (currentToken) {
+            // Token exists but got 401 - might be expired, but don't logout immediately
+            Swal.fire({
+              title: 'Authentication Failed',
+              text: data.message || 'Your session may have expired. Please try again.',
+              icon: 'warning',
+              confirmButtonColor: '#dc143c'
+            })
+          } else {
+            // No token - this is a critical auth failure
+            Swal.fire({
+              title: 'Session Expired',
+              text: 'Please log in again to continue.',
+              icon: 'warning',
+              confirmButtonColor: '#dc143c'
+            }).then(() => {
+              localStorage.removeItem('superadmin_token')
+              window.location.href = '/login'
+            })
+          }
         } else {
           throw new Error(data.message || 'Failed to upload logo')
         }
@@ -252,15 +260,27 @@ const SuperSettins = () => {
         // SSE broadcast already done by backend, frontend will catch it automatically
       } else {
         if (response.status === 401 || response.status === 403) {
-          Swal.fire({
-            title: 'Authentication Failed',
-            text: data.message || 'Your session has expired. Please log in again.',
-            icon: 'warning',
-            confirmButtonColor: '#dc143c'
-          }).then(() => {
-            localStorage.removeItem('superadmin_token')
-            window.location.href = '/login'
-          })
+          const currentToken = localStorage.getItem('superadmin_token')
+          if (currentToken) {
+            // Token exists but got 401 - might be expired, but don't logout immediately
+            Swal.fire({
+              title: 'Authentication Failed',
+              text: data.message || 'Your session may have expired. Please try again.',
+              icon: 'warning',
+              confirmButtonColor: '#dc143c'
+            })
+          } else {
+            // No token - this is a critical auth failure
+            Swal.fire({
+              title: 'Session Expired',
+              text: 'Please log in again to continue.',
+              icon: 'warning',
+              confirmButtonColor: '#dc143c'
+            }).then(() => {
+              localStorage.removeItem('superadmin_token')
+              window.location.href = '/login'
+            })
+          }
         } else {
           throw new Error(data.message || 'Failed to delete logo')
         }

@@ -13,6 +13,7 @@ const SuperTemplates = () => {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
+  const [editVersion, setEditVersion] = useState(null)
 
   // Available element types
   const elementTypes = [
@@ -29,9 +30,19 @@ const SuperTemplates = () => {
     fetchTemplates()
   }, [selectedFormat])
 
+  const getAuthHeaders = () => {
+    const raw = localStorage.getItem('superadmin_token')
+    const token = raw && raw !== 'null' && raw !== 'undefined' ? raw : null
+    return token ? { Authorization: `Bearer ${token}` } : {}
+  }
+
   const fetchTemplates = async () => {
     try {
-      const response = await fetch(`/api/report-templates?format=${selectedFormat}`)
+      const response = await fetch(`/api/report-templates?format=${selectedFormat}`, {
+        headers: {
+          ...getAuthHeaders()
+        }
+      })
       if (response.ok) {
         const data = await response.json()
         setTemplates(data.templates || [])
@@ -46,6 +57,8 @@ const SuperTemplates = () => {
     setTemplateName(template.name)
     setElements(template.elements || [])
     setIsEditing(true)
+    const timestamp = template.updatedAt ? new Date(template.updatedAt).getTime() : Date.now()
+    setEditVersion(timestamp)
   }
 
   const createNewTemplate = () => {
@@ -53,6 +66,7 @@ const SuperTemplates = () => {
     setTemplateName('')
     setElements([])
     setIsEditing(true)
+    setEditVersion(Date.now())
   }
 
   const addElement = (elementType) => {
@@ -149,6 +163,10 @@ const SuperTemplates = () => {
         createdBy: userData.id
       }
 
+      if (selectedTemplate?._id) {
+        templateData.clientTimestamp = editVersion ?? Date.now()
+      }
+
       const url = selectedTemplate 
         ? `/api/report-templates/${selectedTemplate._id}`
         : '/api/report-templates'
@@ -164,6 +182,22 @@ const SuperTemplates = () => {
         body: JSON.stringify(templateData)
       })
 
+      const data = await response.json().catch(() => ({}))
+
+      if (response.status === 409) {
+        Swal.fire({
+          title: 'Outdated Data',
+          text: data.message || 'Your edit is outdated. Another user saved first.',
+          icon: 'warning',
+          confirmButtonColor: '#dc143c'
+        })
+        if (data.currentTimestamp) {
+          setEditVersion(data.currentTimestamp)
+        }
+        await fetchTemplates()
+        return
+      }
+
       if (response.ok) {
         Swal.fire({
           title: 'Success!',
@@ -172,12 +206,16 @@ const SuperTemplates = () => {
           confirmButtonColor: '#dc143c'
         })
         await fetchTemplates()
+        if (data?.newTimestamp) {
+          setEditVersion(data.newTimestamp)
+        }
         setTimeout(() => {
           setIsEditing(false)
           setSuccess('')
+          setSelectedTemplate(null)
+          setEditVersion(null)
         }, 1500)
       } else {
-        const data = await response.json()
         Swal.fire({
           title: 'Save Failed',
           text: data.message || 'Failed to save template',
@@ -235,6 +273,7 @@ const SuperTemplates = () => {
         if (selectedTemplate?._id === templateId) {
           setIsEditing(false)
           setSelectedTemplate(null)
+          setEditVersion(null)
         }
         setTimeout(() => setSuccess(''), 2000)
       } else {
@@ -330,6 +369,7 @@ const SuperTemplates = () => {
                 setIsEditing(false)
                 setSelectedTemplate(null)
                 setElements([])
+                setEditVersion(null)
               }} className="cancel-btn">
                 Cancel
               </button>

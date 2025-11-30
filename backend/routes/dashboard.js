@@ -3,6 +3,8 @@ const Attendance = require('../models/Attendance')
 const Booking = require('../models/Booking')
 const Announcement = require('../models/Announcement')
 const Gallery = require('../models/Gallery')
+const { authenticateAdminOrSuperAdmin } = require('../middleware/auth')
+const { checkModuleAccess } = require('../middleware/moduleAccess')
 
 const router = express.Router()
 
@@ -24,10 +26,9 @@ const ensureDateMap = (startDate, days, existing, labelFormatter) => {
 const formatShortDate = (date) =>
   date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 
-// Dashboard overview
-// NOTE: This endpoint is intentionally left unauthenticated for now to
-// avoid breaking the existing dashboard view while RBAC is being rolled out.
-router.get('/dashboard/overview', async (_req, res) => {
+// Dashboard overview (Admin or Super Admin only)
+// Note: Dashboard is always accessible for authenticated admins (no module toggle)
+router.get('/dashboard/overview', authenticateAdminOrSuperAdmin, async (_req, res) => {
   try {
     const todayStart = new Date()
     todayStart.setHours(0, 0, 0, 0)

@@ -8,6 +8,7 @@ import AdminAttendance from './AdminAttendance'
 import AdminGallery from './AdminGallery'
 import AdminReports from './AdminReports'
 import AdminSettings from './AdminSettings'
+import ErrorBoundary from '../ErrorBoundary'
 import '../../styles/AdminCss/dashboard-layout.css'
 import '../../styles/AdminCss/AdminDashboard.css'
 import logo from '../../assets/img/Logo.jpg'
@@ -111,7 +112,7 @@ export default function AdminDashboard() {
     }
   }, [])
 
-  // Fetch profile logo from settings
+  // Fetch profile logo from settings + setup SSE listeners
   useEffect(() => {
     fetchProfileLogo()
     
@@ -125,7 +126,7 @@ export default function AdminDashboard() {
     if ('EventSource' in window) {
       const eventSource = new EventSource('/api/realtime/stream')
       
-      eventSource.addEventListener('settings', (e) => {
+      const handleSettingsEvent = (e) => {
         try {
           const eventData = JSON.parse(e.data)
           const { action, profileLogo } = eventData.data || {}
@@ -140,7 +141,9 @@ export default function AdminDashboard() {
         } catch (error) {
           console.error('Error processing logo update event:', error)
         }
-      })
+      }
+      
+      eventSource.addEventListener('settings', handleSettingsEvent)
       
       eventSource.onerror = () => {
         // Browser will auto-reconnect
@@ -148,6 +151,7 @@ export default function AdminDashboard() {
       
       return () => {
         window.removeEventListener('logoUpdated', handleLogoUpdate)
+        eventSource.removeEventListener('settings', handleSettingsEvent)
         eventSource.close()
       }
     }
@@ -168,6 +172,7 @@ export default function AdminDashboard() {
         }
       })
 
+      // Don't logout on 401/403 for optional logo fetch - just use default logo
       if (response.ok) {
         const data = await response.json()
         if (data.success && data.data.profileLogo) {
@@ -175,9 +180,18 @@ export default function AdminDashboard() {
         } else {
           setProfileLogo(null) // Reset to default if no logo
         }
+      } else if (response.status === 401 || response.status === 403) {
+        // Silently handle 401/403 - don't logout, just don't show logo
+        console.log('Logo fetch failed: Unauthorized/Forbidden - using default logo')
+        setProfileLogo(null)
+      } else {
+        // Other errors - also just use default logo
+        setProfileLogo(null)
       }
     } catch (error) {
+      // Silently use default logo on network error
       console.error('Error fetching profile logo:', error)
+      setProfileLogo(null)
     }
   }
 
@@ -199,11 +213,29 @@ export default function AdminDashboard() {
     setLoading(true)
     setError('')
     try {
+      const token = getAuthHeaders().Authorization
+      if (!token) {
+        // No token - don't fetch, but don't redirect (might be timing issue)
+        // Only redirect if we actually get 401 from API
+        console.log('No token available, skipping dashboard fetch')
+        setLoading(false)
+        return
+      }
+
       const response = await fetch('/api/dashboard/overview', {
         headers: {
           ...getAuthHeaders()
         }
       })
+      
+      // Only logout on 401 if we have a token (means token is invalid/expired)
+      // BUT: Don't logout immediately - might be a temporary issue
+      if (response.status === 401 && token) {
+        setError('Unauthorized: Please check your session or try refreshing the page')
+        setLoading(false)
+        return
+      }
+      
       if (!response.ok) {
         throw new Error('Failed to load dashboard data')
       }
@@ -223,11 +255,24 @@ export default function AdminDashboard() {
 
   const fetchPendingNotifications = useCallback(async () => {
     try {
+      const token = getAuthHeaders().Authorization
+      if (!token) {
+        // No token - don't fetch notifications, but don't logout (optional data)
+        return
+      }
+
       const response = await fetch('/api/bookings/pending?limit=5', {
         headers: {
           ...getAuthHeaders()
         }
       })
+      
+      // Don't logout on 401 for optional notifications - just skip
+      if (response.status === 401) {
+        console.log('Notifications fetch failed: Unauthorized')
+        return
+      }
+      
       if (!response.ok) {
         return
       }
@@ -554,7 +599,7 @@ export default function AdminDashboard() {
     if (key === 'logout') {
       localStorage.removeItem('admin_token')
       localStorage.removeItem('admin_user')
-      window.location.reload()
+      window.location.href = '/login'
       return
     }
     setActive(key)
@@ -1138,11 +1183,13 @@ export default function AdminDashboard() {
           </div>
         )}
         
+        <ErrorBoundary>
         {active === 'bookings' && <AdminBooking />}
         {active === 'attendance' && <AdminAttendance profileData={profileData} />}
         {active === 'gallery' && <AdminGallery />}
         {active === 'reports' && <AdminReports />}
         {active === 'settings' && <AdminSettings onActiveChange={setActive} />}
+        </ErrorBoundary>
       </DashboardLayout>
 
       {/* Checkout Modal */}

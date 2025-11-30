@@ -5,6 +5,10 @@ const path = require('path')
 const fs = require('fs')
 const Gallery = require('../models/Gallery')
 const { authenticateAdmin } = require('../middleware/auth')
+const { checkModuleAccess } = require('../middleware/moduleAccess')
+
+const getRecordTimestamp = (record) =>
+  Math.max(record.wts || 0, record.updatedAt ? record.updatedAt.getTime() : 0)
 
 // Configure multer for image uploads
 const storage = multer.diskStorage({
@@ -49,7 +53,7 @@ router.get('/gallery', async (req, res) => {
 })
 
 // Get all gallery items (Admin only - includes inactive)
-router.get('/gallery/admin', authenticateAdmin, async (req, res) => {
+router.get('/gallery/admin', authenticateAdmin, checkModuleAccess('gallery'), async (req, res) => {
   try {
     const items = await Gallery.find()
       .sort({ order: 1, createdAt: -1 })
@@ -60,7 +64,7 @@ router.get('/gallery/admin', authenticateAdmin, async (req, res) => {
 })
 
 // Get single gallery item (Admin only)
-router.get('/gallery/:id', authenticateAdmin, async (req, res) => {
+router.get('/gallery/:id', authenticateAdmin, checkModuleAccess('gallery'), async (req, res) => {
   try {
     const item = await Gallery.findById(req.params.id)
     if (!item) {
@@ -73,7 +77,7 @@ router.get('/gallery/:id', authenticateAdmin, async (req, res) => {
 })
 
 // Create new gallery item (Admin only)
-router.post('/gallery', authenticateAdmin, upload.single('image'), async (req, res) => {
+router.post('/gallery', authenticateAdmin, checkModuleAccess('gallery'), upload.single('image'), async (req, res) => {
   try {
     const { title, category, description, year, order } = req.body
     
@@ -81,13 +85,16 @@ router.post('/gallery', authenticateAdmin, upload.single('image'), async (req, r
       return res.status(400).json({ success: false, message: 'Image is required' })
     }
     
+    const timestamp = Date.now()
     const galleryItem = new Gallery({
       title,
       category,
       description,
       image: `/uploads/gallery/${req.file.filename}`,
       year: year || '',
-      order: order ? parseInt(order) : 0
+      order: order ? parseInt(order) : 0,
+      wts: timestamp,
+      rts: timestamp
     })
     
     await galleryItem.save()
@@ -102,13 +109,31 @@ router.post('/gallery', authenticateAdmin, upload.single('image'), async (req, r
 })
 
 // Update gallery item (Admin only)
-router.put('/gallery/:id', authenticateAdmin, upload.single('image'), async (req, res) => {
+router.put('/gallery/:id', authenticateAdmin, checkModuleAccess('gallery'), upload.single('image'), async (req, res) => {
   try {
-    const { title, category, description, year, isActive, order } = req.body
+    const { title, category, description, year, isActive, order, clientTimestamp } = req.body
     const item = await Gallery.findById(req.params.id)
     
     if (!item) {
       return res.status(404).json({ success: false, message: 'Gallery item not found' })
+    }
+    if (clientTimestamp === undefined || clientTimestamp === null) {
+      if (req.file) {
+        fs.unlinkSync(req.file.path)
+      }
+      return res.status(400).json({ success: false, message: 'clientTimestamp is required for timestamp ordering' })
+    }
+
+    const currentTimestamp = getRecordTimestamp(item)
+    if (Number(clientTimestamp) < currentTimestamp) {
+      if (req.file) {
+        fs.unlinkSync(req.file.path)
+      }
+      return res.status(409).json({
+        success: false,
+        message: 'Your edit is outdated. Another user saved first.',
+        currentTimestamp
+      })
     }
     
     // Update fields
@@ -132,8 +157,12 @@ router.put('/gallery/:id', authenticateAdmin, upload.single('image'), async (req
       item.image = `/uploads/gallery/${req.file.filename}`
     }
     
+    const now = Date.now()
+    item.wts = now
+    item.rts = Math.max(item.rts || 0, now)
+    
     await item.save()
-    res.json({ success: true, data: item })
+    res.json({ success: true, data: item, newTimestamp: item.wts })
   } catch (error) {
     // Delete uploaded file if there's an error
     if (req.file) {
@@ -144,12 +173,26 @@ router.put('/gallery/:id', authenticateAdmin, upload.single('image'), async (req
 })
 
 // Delete gallery item (Admin only)
-router.delete('/gallery/:id', authenticateAdmin, async (req, res) => {
+router.delete('/gallery/:id', authenticateAdmin, checkModuleAccess('gallery'), async (req, res) => {
   try {
+    const { clientTimestamp } = req.body || {}
     const item = await Gallery.findById(req.params.id)
     
     if (!item) {
       return res.status(404).json({ success: false, message: 'Gallery item not found' })
+    }
+
+    if (clientTimestamp === undefined || clientTimestamp === null) {
+      return res.status(400).json({ success: false, message: 'clientTimestamp is required for timestamp ordering' })
+    }
+
+    const currentTimestamp = getRecordTimestamp(item)
+    if (Number(clientTimestamp) < currentTimestamp) {
+      return res.status(409).json({
+        success: false,
+        message: 'Your edit is outdated. Another user saved first.',
+        currentTimestamp
+      })
     }
     
     // Delete image file

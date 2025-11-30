@@ -6,6 +6,9 @@ const fs = require('fs')
 const Announcement = require('../models/Announcement')
 const { authenticateAdmin } = require('../middleware/auth')
 
+const getRecordTimestamp = (record) =>
+  Math.max(record.wts || 0, record.updatedAt ? record.updatedAt.getTime() : 0)
+
 // Configure multer for image uploads
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -86,13 +89,16 @@ router.post('/announcements', authenticateAdmin, upload.single('image'), async (
       return res.status(400).json({ success: false, message: 'Title, description, and date are required' })
     }
     
+    const timestamp = Date.now()
     const announcement = new Announcement({
       title,
       description,
       date: new Date(date),
       image: req.file ? `/uploads/announcements/${req.file.filename}` : undefined,
       order: order ? parseInt(order) : 0,
-      isActive: isActive !== undefined ? (isActive === 'true' || isActive === true) : true
+      isActive: isActive !== undefined ? (isActive === 'true' || isActive === true) : true,
+      wts: timestamp,
+      rts: timestamp
     })
     
     await announcement.save()
@@ -109,7 +115,7 @@ router.post('/announcements', authenticateAdmin, upload.single('image'), async (
 // Update announcement (Admin only)
 router.put('/announcements/:id', authenticateAdmin, upload.single('image'), async (req, res) => {
   try {
-    const { title, description, date, isActive, order } = req.body
+    const { title, description, date, isActive, order, clientTimestamp } = req.body
     const item = await Announcement.findById(req.params.id)
     
     if (!item) {
@@ -120,6 +126,25 @@ router.put('/announcements/:id', authenticateAdmin, upload.single('image'), asyn
       return res.status(404).json({ success: false, message: 'Announcement not found' })
     }
     
+    if (clientTimestamp === undefined || clientTimestamp === null) {
+      if (req.file) {
+        fs.unlinkSync(req.file.path)
+      }
+      return res.status(400).json({ success: false, message: 'clientTimestamp is required for timestamp ordering' })
+    }
+
+    const currentTimestamp = getRecordTimestamp(item)
+    if (Number(clientTimestamp) < currentTimestamp) {
+      if (req.file) {
+        fs.unlinkSync(req.file.path)
+      }
+      return res.status(409).json({
+        success: false,
+        message: 'Your edit is outdated. Another user saved first.',
+        currentTimestamp
+      })
+    }
+
     // Update fields
     if (title !== undefined) item.title = title
     if (description !== undefined) item.description = description
@@ -141,8 +166,12 @@ router.put('/announcements/:id', authenticateAdmin, upload.single('image'), asyn
       item.image = `/uploads/announcements/${req.file.filename}`
     }
     
+    const now = Date.now()
+    item.wts = now
+    item.rts = Math.max(item.rts || 0, now)
+    
     await item.save()
-    res.json({ success: true, data: item })
+    res.json({ success: true, data: item, newTimestamp: item.wts })
   } catch (error) {
     // Delete uploaded file if there's an error
     if (req.file) {
@@ -155,10 +184,24 @@ router.put('/announcements/:id', authenticateAdmin, upload.single('image'), asyn
 // Delete announcement (Admin only)
 router.delete('/announcements/:id', authenticateAdmin, async (req, res) => {
   try {
+    const { clientTimestamp } = req.body || {}
     const item = await Announcement.findById(req.params.id)
     
     if (!item) {
       return res.status(404).json({ success: false, message: 'Announcement not found' })
+    }
+
+    if (clientTimestamp === undefined || clientTimestamp === null) {
+      return res.status(400).json({ success: false, message: 'clientTimestamp is required for timestamp ordering' })
+    }
+
+    const currentTimestamp = getRecordTimestamp(item)
+    if (Number(clientTimestamp) < currentTimestamp) {
+      return res.status(409).json({
+        success: false,
+        message: 'Your edit is outdated. Another user saved first.',
+        currentTimestamp
+      })
     }
     
     // Delete image file if it exists

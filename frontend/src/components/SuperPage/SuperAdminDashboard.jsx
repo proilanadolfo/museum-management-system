@@ -6,6 +6,9 @@ import SuperManage from './SuperManage'
 import SuperSettins from './SuperSettins'
 import SuperTemplates from './SuperTemplates'
 import ReportTemplateBuilder from './ReportTemplateBuilder'
+import ModulePermissions from './ModulePermissions'
+import SuperAuditLogs from './SuperAuditLogs'
+import ErrorBoundary from '../ErrorBoundary'
 import '../../styles/SuperCss/super-dashboard-layout.css'
 import '../../styles/SuperCss/SuperDashboard.css'
 import logo from '../../assets/img/Logo.jpg'
@@ -71,24 +74,40 @@ export default function SuperAdminDashboard() {
   const fetchProfileLogo = async () => {
     try {
       const token = localStorage.getItem('superadmin_token')
-      if (!token) return
+      if (!token) {
+        setProfileLogo(null)
+        return
+      }
       
       const response = await fetch('http://localhost:5000/api/museum-settings', {
         headers: {
-          'Authorization': `Bearer ${token}`
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
         }
       })
 
+      // Don't logout on 401/403 for optional logo fetch - just use default logo
       if (response.ok) {
         const data = await response.json()
-        if (data.success && data.data.profileLogo) {
+        if (data.success && data.data?.profileLogo) {
           setProfileLogo(`http://localhost:5000/${data.data.profileLogo}`)
         } else {
           setProfileLogo(null) // Reset to default if no logo
         }
+      } else if (response.status === 401 || response.status === 403) {
+        // Silently handle 401/403 - don't logout, just don't show logo
+        // This could be due to module permissions or expired token, but don't force logout
+        console.log('Logo fetch failed: Unauthorized/Forbidden - using default logo')
+        setProfileLogo(null)
+      } else {
+        // Other errors (500, etc.) - also just use default logo
+        console.log('Logo fetch failed with status:', response.status)
+        setProfileLogo(null)
       }
     } catch (error) {
+      // Silently use default logo on network error
       console.error('Error fetching profile logo:', error)
+      setProfileLogo(null)
     }
   }
 
@@ -101,7 +120,8 @@ export default function SuperAdminDashboard() {
         sidebar={<SuperAdminSidebar active={active} onNavigate={(k) => {
           if (k === 'logout') {
             localStorage.removeItem('superadmin_token')
-            window.location.reload()
+            localStorage.removeItem('superadmin_user')
+            window.location.href = '/login'
             return
           }
           setActive(k)
@@ -132,10 +152,14 @@ export default function SuperAdminDashboard() {
         </div>
       </div>
 
+        <ErrorBoundary>
         {active === 'dashboard' && <SuperDashboard />}
         {active === 'admins' && <SuperManage />}
+        {active === 'permissions' && <ModulePermissions />}
         {active === 'templates' && <ReportTemplateBuilder />}
+          {active === 'audit-logs' && <SuperAuditLogs />}
         {active === 'settings' && <SuperSettins />}
+        </ErrorBoundary>
     </DashboardLayout>
     </>
   )

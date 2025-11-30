@@ -779,12 +779,19 @@ router.patch('/bookings/:confirmationCode/manage', async (req, res) => {
 router.patch('/bookings/:id/status', authenticateAdmin, async (req, res) => {
   try {
     const { id } = req.params
-    const { status, notes } = req.body
+    const { status, notes, clientTimestamp } = req.body
 
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return res.status(400).json({
         success: false,
         message: 'Invalid booking ID'
+      })
+    }
+
+    if (clientTimestamp === undefined || clientTimestamp === null) {
+      return res.status(400).json({
+        success: false,
+        message: 'clientTimestamp is required for timestamp ordering'
       })
     }
 
@@ -807,25 +814,37 @@ router.patch('/bookings/:id/status', authenticateAdmin, async (req, res) => {
 
     const previousStatus = existingBooking.status
 
-    const updateData = {}
-    if (status) updateData.status = status
-    if (notes) updateData.notes = notes
+    const currentTimestamp = Math.max(
+      existingBooking.wts || 0,
+      existingBooking.updatedAt ? existingBooking.updatedAt.getTime() : 0
+    )
 
-    if (status === 'cancelled') {
-      updateData.cancelledBy = 'admin'
-      updateData.cancelledAt = new Date()
-      updateData.cancelledReason = notes || 'Cancelled by admin.'
-    } else if (status && previousStatus === 'cancelled') {
-      updateData.cancelledBy = undefined
-      updateData.cancelledAt = undefined
-      updateData.cancelledReason = undefined
+    if (Number(clientTimestamp) < currentTimestamp) {
+      return res.status(409).json({
+        success: false,
+        message: 'Your edit is outdated. Another user saved first.',
+        currentTimestamp
+      })
     }
 
-    const booking = await Booking.findByIdAndUpdate(
-      id,
-      updateData,
-      { new: true, runValidators: true }
-    )
+    if (status) existingBooking.status = status
+    if (typeof notes === 'string') existingBooking.notes = notes
+
+    if (status === 'cancelled') {
+      existingBooking.cancelledBy = 'admin'
+      existingBooking.cancelledAt = new Date()
+      existingBooking.cancelledReason = notes || 'Cancelled by admin.'
+    } else if (status && previousStatus === 'cancelled') {
+      existingBooking.cancelledBy = undefined
+      existingBooking.cancelledAt = undefined
+      existingBooking.cancelledReason = undefined
+    }
+
+    const now = Date.now()
+    existingBooking.wts = now
+    existingBooking.rts = Math.max(existingBooking.rts || 0, now)
+
+    const booking = await existingBooking.save()
 
     // Send email and SMS notifications if status changed to confirmed or cancelled
     if (status && (status === 'confirmed' || status === 'cancelled') && previousStatus !== status) {
@@ -911,7 +930,8 @@ router.patch('/bookings/:id/status', authenticateAdmin, async (req, res) => {
     res.json({
       success: true,
       message: 'Booking updated successfully',
-      data: booking
+      data: booking,
+      newTimestamp: booking.wts
     })
   } catch (error) {
     console.error('Update booking error:', error)
@@ -926,6 +946,7 @@ router.patch('/bookings/:id/status', authenticateAdmin, async (req, res) => {
 router.delete('/bookings/:id', authenticateAdmin, async (req, res) => {
   try {
     const { id } = req.params
+    const { clientTimestamp } = req.body || {}
 
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return res.status(400).json({
@@ -941,6 +962,26 @@ router.delete('/bookings/:id', authenticateAdmin, async (req, res) => {
       return res.status(404).json({
         success: false,
         message: 'Booking not found'
+      })
+    }
+
+    const currentTimestamp = Math.max(
+      booking.wts || 0,
+      booking.updatedAt ? booking.updatedAt.getTime() : 0
+    )
+
+    if (clientTimestamp === undefined || clientTimestamp === null) {
+      return res.status(400).json({
+        success: false,
+        message: 'clientTimestamp is required for timestamp ordering'
+      })
+    }
+
+    if (Number(clientTimestamp) < currentTimestamp) {
+      return res.status(409).json({
+        success: false,
+        message: 'Your edit is outdated. Another user saved first.',
+        currentTimestamp
       })
     }
 

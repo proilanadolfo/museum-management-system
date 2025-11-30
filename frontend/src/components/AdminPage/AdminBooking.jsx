@@ -42,6 +42,7 @@ const AdminBooking = () => {
   const [deleteSuccess, setDeleteSuccess] = useState('')
   const [calendarView, setCalendarView] = useState('table')
   const [calendarDate, setCalendarDate] = useState(new Date())
+  const [bookingVersion, setBookingVersion] = useState(null)
 
   const getAuthHeaders = () => {
     const raw = localStorage.getItem('admin_token')
@@ -61,15 +62,30 @@ const AdminBooking = () => {
           ...getAuthHeaders()
         }
       })
+      // Only redirect on 401 if we have a token (means token is invalid/expired)
+      // BUT: Don't logout immediately - might be a temporary issue
+      const token = getAuthHeaders().Authorization
+      if (response.status === 401 && token) {
+        // Show error instead of logging out
+        setBookingsError('Unauthorized: Please check your session or try refreshing the page')
+        setBookingsLoading(false)
+        return null
+      }
+      // If 401 and no token, just skip (component might be loading)
+      if (response.status === 401 && !token) {
+        return null
+      }
       if (!response.ok) {
         setBookingsError('Failed to load bookings')
-        return
+        return null
       }
       const data = await response.json()
       setBookings(data.data || [])
+      return data.data || []
     } catch (error) {
       console.error('Fetch bookings error:', error)
       setBookingsError('An error occurred while loading bookings')
+      return null
     } finally {
       setBookingsLoading(false)
     }
@@ -101,6 +117,9 @@ const AdminBooking = () => {
           // If modal is open for this booking, update it
           if (selectedBooking && selectedBooking._id === booking._id) {
             setSelectedBooking(prev => ({ ...prev, ...booking }))
+            if (booking.updatedAt) {
+              setBookingVersion(new Date(booking.updatedAt).getTime())
+            }
           }
         } else if (action === 'deleted') {
           // Remove deleted booking from the list
@@ -109,6 +128,7 @@ const AdminBooking = () => {
           if (selectedBooking && selectedBooking._id === bookingId) {
             setShowBookingModal(false)
             setSelectedBooking(null)
+            setBookingVersion(null)
           }
         }
       } catch (error) {
@@ -129,17 +149,51 @@ const AdminBooking = () => {
     async (bookingId, status, notes = '') => {
       setUpdateStatusLoading(true)
       try {
+        const clientTimestamp =
+          selectedBooking && selectedBooking._id === bookingId && bookingVersion
+            ? bookingVersion
+            : Date.now()
+
         const response = await fetch(`/api/bookings/${bookingId}/status`, {
           method: 'PATCH',
           headers: {
             'Content-Type': 'application/json',
             ...getAuthHeaders()
           },
-          body: JSON.stringify({ status, notes })
+          body: JSON.stringify({ status, notes, clientTimestamp })
         })
 
+        const data = await response.json().catch(() => ({}))
+
+        if (response.status === 409) {
+          const message = data.message || 'Your edit is outdated. Another user saved first.'
+          Swal.fire({
+            title: 'Outdated Data',
+            text: message,
+            icon: 'warning',
+            confirmButtonColor: '#dc143c'
+          })
+          if (data.currentTimestamp) {
+            setBookingVersion(data.currentTimestamp)
+          }
+          const latest = await fetchBookings()
+          if (latest) {
+            const refreshed = latest.find(b => b._id === bookingId)
+            if (refreshed) {
+              setSelectedBooking(refreshed)
+              if (refreshed.updatedAt) {
+                setBookingVersion(new Date(refreshed.updatedAt).getTime())
+              }
+            } else {
+              setShowBookingModal(false)
+              setSelectedBooking(null)
+              setBookingVersion(null)
+            }
+          }
+          return
+        }
+
         if (!response.ok) {
-          const data = await response.json().catch(() => ({}))
           const message = data.message || 'Failed to update booking status'
           setBookingsError(message)
 
@@ -152,9 +206,13 @@ const AdminBooking = () => {
           return
         }
 
-        // Real-time update will handle the UI update, no need to refetch
+        if (data?.newTimestamp) {
+          setBookingVersion(data.newTimestamp)
+        }
+
         setShowBookingModal(false)
         setSelectedBooking(null)
+        setBookingVersion(null)
 
         Swal.fire({
           title: 'Status Updated',
@@ -177,7 +235,7 @@ const AdminBooking = () => {
         setUpdateStatusLoading(false)
       }
     },
-    [fetchBookings]
+    [bookingVersion, selectedBooking, fetchBookings]
   )
 
   const handleDeleteBooking = useCallback(
@@ -202,16 +260,51 @@ const AdminBooking = () => {
       setDeleteSuccess('')
 
       try {
+        const clientTimestamp =
+          selectedBooking && selectedBooking._id === bookingId && bookingVersion
+            ? bookingVersion
+            : Date.now()
+
         const response = await fetch(`/api/bookings/${bookingId}`, {
           method: 'DELETE',
           headers: {
             'Content-Type': 'application/json',
           ...getAuthHeaders()
-          }
+          },
+          body: JSON.stringify({ clientTimestamp })
         })
 
+        const data = await response.json().catch(() => ({}))
+
+        if (response.status === 409) {
+          const message = data.message || 'Your edit is outdated. Another user saved first.'
+          Swal.fire({
+            title: 'Outdated Data',
+            text: message,
+            icon: 'warning',
+            confirmButtonColor: '#dc143c'
+          })
+          if (data.currentTimestamp) {
+            setBookingVersion(data.currentTimestamp)
+          }
+          const latest = await fetchBookings()
+          if (latest) {
+            const refreshed = latest.find(b => b._id === bookingId)
+            if (refreshed) {
+              setSelectedBooking(refreshed)
+              if (refreshed.updatedAt) {
+                setBookingVersion(new Date(refreshed.updatedAt).getTime())
+              }
+            } else {
+              setShowBookingModal(false)
+              setSelectedBooking(null)
+              setBookingVersion(null)
+            }
+          }
+          return
+        }
+
         if (!response.ok) {
-          const data = await response.json().catch(() => ({}))
           const message = data.message || 'Failed to delete booking'
           setBookingsError(message)
 
@@ -224,11 +317,11 @@ const AdminBooking = () => {
           return
         }
 
-        const data = await response.json()
         const message = data.message || 'Booking deleted successfully'
         setDeleteSuccess(message)
         setShowBookingModal(false)
         setSelectedBooking(null)
+        setBookingVersion(null)
 
         // SweetAlert success
         Swal.fire({
@@ -257,7 +350,7 @@ const AdminBooking = () => {
         setDeleteLoading(false)
       }
     },
-    []
+    [bookingVersion, selectedBooking, fetchBookings]
   )
 
   const activeBookings = useMemo(
@@ -277,6 +370,13 @@ const AdminBooking = () => {
     }
     return activeBookings
   }, [archivedBookings, activeBookings, bookingStatusFilter, showArchivedBookings])
+
+  const openBookingModal = useCallback((booking) => {
+    setSelectedBooking(booking)
+    const timestamp = booking.updatedAt ? new Date(booking.updatedAt).getTime() : Date.now()
+    setBookingVersion(timestamp)
+    setShowBookingModal(true)
+  }, [])
 
   const calendarEvents = useMemo(() => {
     return filteredBookings.map((booking) => {
@@ -305,6 +405,7 @@ const AdminBooking = () => {
   const handleCloseModal = () => {
     setShowBookingModal(false)
     setSelectedBooking(null)
+    setBookingVersion(null)
   }
 
   return (
@@ -421,8 +522,7 @@ const AdminBooking = () => {
             date={calendarDate}
             onNavigate={setCalendarDate}
             onSelectEvent={(event) => {
-              setSelectedBooking(event.resource)
-              setShowBookingModal(true)
+              openBookingModal(event.resource)
             }}
             eventPropGetter={(event) => ({
               style: {
@@ -545,10 +645,7 @@ const AdminBooking = () => {
                             <button
                               type="button"
                               className={`booking-manage-button ${showArchivedBookings ? 'is-archived' : ''}`}
-                              onClick={() => {
-                                setSelectedBooking(booking)
-                                setShowBookingModal(true)
-                              }}
+                              onClick={() => openBookingModal(booking)}
                             >
                               {showArchivedBookings ? 'View' : 'Manage'}
                             </button>

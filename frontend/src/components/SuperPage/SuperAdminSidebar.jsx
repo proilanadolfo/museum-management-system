@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { FiHome, FiUsers, FiSettings, FiLogOut, FiFileText } from 'react-icons/fi'
+import { FiHome, FiUsers, FiSettings, FiLogOut, FiFileText, FiShield, FiList } from 'react-icons/fi'
 import logo from '../../assets/img/Logo.jpg'
 import '../../styles/SuperCss/SuperAdminSidebar.css'
 
@@ -39,7 +39,9 @@ export default function SuperAdminSidebar({ onNavigate, active }) {
   const items = [
     { key: 'dashboard', label: 'Dashboard', icon: <FiHome />, description: 'Overview' },
     { key: 'admins', label: 'Manage Admins', icon: <FiUsers />, description: 'User Management' },
+    { key: 'permissions', label: 'Module Permissions', icon: <FiShield />, description: 'Access Control' },
     { key: 'templates', label: 'Report Templates', icon: <FiFileText />, description: 'Design Reports' },
+    { key: 'audit-logs', label: 'Audit Logs', icon: <FiList />, description: 'View Activity Logs' },
     { key: 'settings', label: 'Settings', icon: <FiSettings />, description: 'System Config' },
     { key: 'logout', label: 'Logout', icon: <FiLogOut />, description: 'Sign Out' },
   ]
@@ -213,17 +215,24 @@ export default function SuperAdminSidebar({ onNavigate, active }) {
           })
         }
 
-        // Try to fetch additional profile data from API
+        // Try to fetch additional profile data from API (optional - don't logout on failure)
         const token = localStorage.getItem('superadmin_token')
         if (token && storedUser) {
           const userData = JSON.parse(storedUser)
-          const response = await fetch(`/api/superadmin/profile?userId=${userData.id}`, {
+          // Use id or _id, whichever is available
+          const userId = userData.id || userData._id
+          
+          // Only fetch if we have a valid userId
+          if (userId) {
+            try {
+              const response = await fetch(`/api/superadmin/profile?userId=${userId}`, {
             headers: {
               'Authorization': `Bearer ${token}`,
               'Content-Type': 'application/json'
             }
           })
           
+              // Don't logout on 401/404 for optional profile fetch - just use localStorage data
           if (response.ok) {
             const profileData = await response.json()
             setUserProfile(prev => ({
@@ -231,6 +240,12 @@ export default function SuperAdminSidebar({ onNavigate, active }) {
               ...profileData,
               role: 'System Administrator'
             }))
+              }
+              // Silently ignore 401, 404, and other errors for optional profile endpoint
+            } catch (error) {
+              // Silently ignore network errors for optional profile fetch
+              console.log('Profile fetch failed, using localStorage data:', error.message)
+            }
           }
         }
       } catch (error) {
@@ -302,8 +317,13 @@ export default function SuperAdminSidebar({ onNavigate, active }) {
           {items.map((item) => (
             <li key={item.key} className="nav-item">
               <button
+                type="button"
                 className={`nav-link ${active === item.key ? 'is-active' : ''}`}
-                onClick={() => onNavigate?.(item.key)}
+                onClick={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  onNavigate?.(item.key)
+                }}
                 title={item.description}
               >
                 <span className="nav-icon">{item.icon}</span>

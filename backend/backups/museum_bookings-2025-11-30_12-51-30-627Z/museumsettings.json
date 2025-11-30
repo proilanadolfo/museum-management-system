@@ -1,0 +1,220 @@
+[
+  {
+    "_id": "6928a3eb5495220bfd7b9aa6",
+    "availableDays": [
+      2,
+      3,
+      4,
+      5
+    ],
+    "operatingHours": {
+      "0": {
+        "open": "10:00",
+        "close": "17:00",
+        "_id": "6929d3814f71de7c6c5561fb"
+      },
+      "1": {
+        "open": "09:00",
+        "close": "18:00",
+        "_id": "6929d3814f71de7c6c5561fc"
+      },
+      "2": {
+        "open": "09:00",
+        "close": "18:00",
+        "_id": "6929d3814f71de7c6c5561fd"
+      },
+      "3": {
+        "open": "09:00",
+        "close": "18:00",
+        "_id": "6929d3814f71de7c6c5561fe"
+      },
+      "4": {
+        "open": "09:00",
+        "close": "18:00",
+        "_id": "6929d3814f71de7c6c5561ff"
+      },
+      "5": {
+        "open": "09:00",
+        "close": "18:00",
+        "_id": "6929d3814f71de7c6c556200"
+      },
+      "6": {
+        "open": "10:00",
+        "close": "17:00",
+        "_id": "6929d3814f71de7c6c556201"
+      }
+    },
+    "blockedDates": [],
+    "availableDates": [],
+    "timeSlots": [],
+    "minAdvanceBookingDays": 1,
+    "maxAdvanceBookingDays": 90,
+    "maxVisitorsPerSlot": 50,
+    "isAcceptingBookings": true,
+    "googleCalendarEnabled": false,
+    "googleCalendarTokens": null,
+    "googleCalendarEmail": null,
+    "mission": "To preserve, promote, and showcase the cultural and historical heritage of our community by providing accessible, accurate, and meaningful museum information through innovative digital systems that enhance visitor experience and educational engagement.sdsgadf",
+    "vision": "To become a leading digital-powered museum that inspires learning, fosters cultural appreciation, and connects people to history through modern, user-friendly, and interactive technologies.",
+    "profileLogo": "uploads\\logos\\profile-logo-1764414782336-239001339.png",
+    "missionSection": {
+      "heading": "Our Commitment",
+      "title": "Preserving History, Inspiring Future",
+      "description": "adsfssdgfgbfnnndng",
+      "rotationInterval": 6000,
+      "stats": [
+        {
+          "label": "Years of Excellence",
+          "value": 25,
+          "suffix": "",
+          "_id": "6928a3eb5495220bfd7b9aae"
+        },
+        {
+          "label": "Active Programs",
+          "value": 15,
+          "suffix": "",
+          "_id": "6928a3eb5495220bfd7b9aaf"
+        },
+        {
+          "label": "Research Studies",
+          "value": 500,
+          "suffix": "+",
+          "_id": "6928a3eb5495220bfd7b9ab0"
+        }
+      ],
+      "images": [
+        {
+          "url": "uploads\\mission\\mission-1764348830195-321802994.JPG",
+          "caption": "",
+          "order": 0,
+          "_id": "6929d39e4f71de7c6c556265"
+        },
+        {
+          "url": "uploads\\mission\\mission-1764349347912-9481012.jpg",
+          "caption": "",
+          "order": 1,
+          "_id": "6929d5a3be8ece54966c8436"
+        },
+        {
+          "url": "uploads\\mission\\mission-1764349348123-216346520.jpg",
+          "caption": "",
+          "order": 2,
+          "_id": "6929d5a4be8ece54966c8441"
+        },
+        {
+          "url": "uploads\\mission\\mission-1764349348340-684967828.jpg",
+          "caption": "",
+          "order": 3,
+          "_id": "6929d5a4be8ece54966c844d"
+        },
+        {
+          "url": "uploads\\mission\\mission-1764349348569-200127920.jpg",
+          "caption": "",
+          "order": 4,
+          "_id": "6929d5a4be8ece54966c845a"
+        },
+        {
+          "url": "uploads\\mission\\mission-1764349348767-746675985.jpg",
+          "caption": "",
+          "order": 5,
+          "_id": "6929d5a4be8ece54966c8468"
+        }
+      ]
+    },
+    "createdAt": "2025-11-27T19:18:03.532Z",
+    "updatedAt": "2025-11-29T11:13:02.401Z",
+    "__v": 1,
+    "rts": 1764387761349,
+    "wts": 1764387761349
+  },
+  {
+    "_id": "6928a3eb5495220bfd7b9ab2",
+    "availableDays": [
+      1,
+      2,
+      3,
+      4,
+      5
+    ],
+    "operatingHours": {
+      "0": {
+        "open": "10:00",
+        "close": "17:00",
+        "_id": "6928a3eb5495220bfd7b9ab9"
+      },
+      "1": {
+        "open": "09:00",
+        "close": "18:00",
+        "_id": "6928a3eb5495220bfd7b9ab3"
+      },
+      "2": {
+        "open": "09:00",
+        "close": "18:00",
+        "_id": "6928a3eb5495220bfd7b9ab4"
+      },
+      "3": {
+        "open": "09:00",
+        "close": "18:00",
+        "_id": "6928a3eb5495220bfd7b9ab5"
+      },
+      "4": {
+        "open": "09:00",
+        "close": "18:00",
+        "_id": "6928a3eb5495220bfd7b9ab6"
+      },
+      "5": {
+        "open": "09:00",
+        "close": "18:00",
+        "_id": "6928a3eb5495220bfd7b9ab7"
+      },
+      "6": {
+        "open": "10:00",
+        "close": "17:00",
+        "_id": "6928a3eb5495220bfd7b9ab8"
+      }
+    },
+    "blockedDates": [],
+    "availableDates": [],
+    "timeSlots": [],
+    "minAdvanceBookingDays": 1,
+    "maxAdvanceBookingDays": 90,
+    "maxVisitorsPerSlot": 50,
+    "isAcceptingBookings": true,
+    "googleCalendarEnabled": false,
+    "googleCalendarTokens": null,
+    "googleCalendarEmail": null,
+    "mission": "We are dedicated to preserving, interpreting, and sharing the rich cultural heritage of our community. Through engaging exhibits, educational programs, and community partnerships, we inspire visitors to connect with history and appreciate the diversity of human experience.",
+    "vision": "To be a leading cultural institution that serves as a bridge between past and present, fostering understanding, appreciation, and celebration of our shared heritage while inspiring future generations to value and preserve cultural diversity.",
+    "profileLogo": null,
+    "missionSection": {
+      "heading": "Our Commitment",
+      "title": "Preserving History, Inspiring Future",
+      "description": "We are dedicated to the preservation, protection, and promotion of cultural heritage through rigorous scholarship, innovative education, and meaningful community engagement.",
+      "rotationInterval": 6000,
+      "stats": [
+        {
+          "label": "Years of Excellence",
+          "value": 25,
+          "suffix": "",
+          "_id": "6928a3eb5495220bfd7b9aba"
+        },
+        {
+          "label": "Active Programs",
+          "value": 15,
+          "suffix": "",
+          "_id": "6928a3eb5495220bfd7b9abb"
+        },
+        {
+          "label": "Research Studies",
+          "value": 500,
+          "suffix": "+",
+          "_id": "6928a3eb5495220bfd7b9abc"
+        }
+      ],
+      "images": []
+    },
+    "createdAt": "2025-11-27T19:18:03.579Z",
+    "updatedAt": "2025-11-27T19:18:03.579Z",
+    "__v": 0
+  }
+]

@@ -129,10 +129,22 @@ const AdminSettings = ({ onActiveChange }) => {
   const [missionImageUploading, setMissionImageUploading] = useState(false)
   const [missionImageError, setMissionImageError] = useState('')
   const [originalMuseumInfo, setOriginalMuseumInfo] = useState(null)
+  const [museumInfoVersion, setMuseumInfoVersion] = useState(null)
   const [pendingMissionImages, setPendingMissionImages] = useState([])
   const [missionImagesToDelete, setMissionImagesToDelete] = useState([])
   const [hasMissionImageChanges, setHasMissionImageChanges] = useState(false)
   const missionChangesRef = useRef(false)
+
+  // Museum info concurrency now handled optimistically via backend TBCC (no UI locks)
+  const getAuthHeaders = () => {
+    const raw = localStorage.getItem('admin_token')
+    const token = raw && raw !== 'null' && raw !== 'undefined' ? raw : null
+    return token
+      ? { Authorization: `Bearer ${token}` }
+      : {}
+  }
+
+  // No TBCC lock endpoints on frontend; TBCC conflict handled on save response
 
   const [googleCalendarStatus, setGoogleCalendarStatus] = useState({
     configured: false,
@@ -143,14 +155,6 @@ const AdminSettings = ({ onActiveChange }) => {
   const [googleCalendarLoading, setGoogleCalendarLoading] = useState(false)
   const [googleCalendarError, setGoogleCalendarError] = useState('')
   const [googleCalendarSuccess, setGoogleCalendarSuccess] = useState('')
-
-  const getAuthHeaders = () => {
-    const raw = localStorage.getItem('admin_token')
-    const token = raw && raw !== 'null' && raw !== 'undefined' ? raw : null
-    return token
-      ? { Authorization: `Bearer ${token}` }
-      : {}
-  }
 
   const handleMissionSectionChange = (field, value) => {
     setMuseumSettings(prev => ({
@@ -281,11 +285,21 @@ const AdminSettings = ({ onActiveChange }) => {
             const data = await response.json()
             if (data?.message) {
               errorMessage = data.message
+            } else {
+              errorMessage = `HTTP ${response.status}: ${response.statusText || 'Unknown error'}`
             }
           } catch (jsonError) {
             // Response body already consumed, can't read text
             errorMessage = `HTTP ${response.status}: ${response.statusText || 'Unknown error'}`
           }
+          
+          // Don't throw error for 404 (image already deleted) or 500 (document not found)
+          if (response.status === 404 || response.status === 500) {
+            console.warn('Mission image delete failed (may already be deleted):', response.status, errorMessage)
+            // Continue with next image instead of throwing
+            continue
+          }
+          
           console.error('Mission image delete failed', response.status, errorMessage)
           throw new Error(errorMessage)
         }
@@ -312,22 +326,12 @@ const AdminSettings = ({ onActiveChange }) => {
               errorMessage = data.message
             }
           } catch (jsonError) {
-            // Response body already consumed, can't read text
-            errorMessage = `HTTP ${response.status}: ${response.statusText || 'Unknown error'}`
-          }
-          console.error('Mission image upload failed', response.status, errorMessage)
-          throw new Error(errorMessage)
-        }
-        if (!response.ok) {
-          let errorMessage = 'Failed to upload mission image'
-          try {
-            const data = await response.json()
-            if (data?.message) {
-              errorMessage = data.message
+            try {
+              const text = await response.text()
+              if (text) errorMessage = text
+            } catch (textError) {
+              errorMessage = `HTTP ${response.status}: ${response.statusText || 'Unknown error'}`
             }
-          } catch (jsonError) {
-            const text = await response.text()
-            if (text) errorMessage = text
           }
           console.error('Mission image upload failed', response.status, errorMessage)
           throw new Error(errorMessage)
@@ -374,16 +378,28 @@ const AdminSettings = ({ onActiveChange }) => {
         await processMissionImageChanges()
         imageChangesSuccess = true
       } catch (error) {
+        Swal.fire({
+          title: 'Image Upload Failed',
+          text: error.message || 'An error occurred while saving mission images. Please try again.',
+          icon: 'error',
+          confirmButtonColor: '#dc143c'
+        })
         return
       }
     }
 
     if (textChanged) {
-      await updateMuseumInfo()
-      await fetchMuseumSettings()
+      try {
+        await updateMuseumInfo()
+        // Refresh settings after successful update
+        await fetchMuseumSettings()
+      } catch (error) {
+        // Error already handled in updateMuseumInfo
+        return
+      }
     } else {
+      // Only image changes were made
       await fetchMuseumSettings()
-      // Show success alert if only image changes were made (no text changes)
       if (imageChangesSuccess) {
         Swal.fire({
           title: 'Success!',
@@ -399,6 +415,15 @@ const AdminSettings = ({ onActiveChange }) => {
     fetchMuseumSettings()
     fetchGoogleCalendarStatus()
   }, [])
+
+  // Reset error states when navigating away from museum info
+  useEffect(() => {
+    if (!showMuseumInfo) {
+      setMuseumInfoError('')
+      setMuseumInfoSuccess('')
+      setMissionImageError('')
+    }
+  }, [showMuseumInfo])
 
   useEffect(() => {
     missionChangesRef.current = hasMissionImageChanges
@@ -452,12 +477,28 @@ const AdminSettings = ({ onActiveChange }) => {
   const fetchMuseumSettings = async () => {
     setMuseumSettingsLoading(true)
     setMuseumSettingsError('')
+    // Also set museumInfoLoading if we're on the museum info view
+    if (showMuseumInfo) {
+      setMuseumInfoLoading(true)
+      setMuseumInfoError('')
+    }
     try {
       const response = await fetch('/api/museum-settings', {
         headers: {
           ...getAuthHeaders()
         }
       })
+      // Don't redirect on 401 for settings fetch - might be module permission issue
+      // Only show error, don't force logout
+      if (response.status === 401) {
+        setMuseumSettingsError('Unauthorized: You may not have permission to view settings')
+        setMuseumSettingsLoading(false)
+        if (showMuseumInfo) {
+          setMuseumInfoLoading(false)
+          setMuseumInfoError('Unauthorized: You may not have permission to view museum info')
+        }
+        return
+      }
       if (response.ok) {
         const data = await response.json()
         if (data.data) {
@@ -478,16 +519,17 @@ const AdminSettings = ({ onActiveChange }) => {
           }
           settings.missionSection = normalizeMissionSection(settings.missionSection)
           setMuseumSettings(settings)
-          setOriginalMuseumInfo(JSON.stringify({
+          const infoSnapshot = JSON.stringify({
             mission: settings.mission || '',
             vision: settings.vision || '',
             missionSection: sanitizeMissionSectionForSubmit(settings.missionSection)
-          }))
-          setOriginalMuseumInfo(JSON.stringify({
-            mission: settings.mission || '',
-            vision: settings.vision || '',
-            missionSection: sanitizeMissionSectionForSubmit(settings.missionSection)
-          }))
+          })
+          setOriginalMuseumInfo(infoSnapshot)
+          if (settings.updatedAt) {
+            setMuseumInfoVersion(new Date(settings.updatedAt).getTime())
+          } else {
+            setMuseumInfoVersion(Date.now())
+          }
           setPendingMissionImages(prev => {
             prev.forEach(img => URL.revokeObjectURL(img.previewUrl))
             return []
@@ -496,13 +538,24 @@ const AdminSettings = ({ onActiveChange }) => {
           setHasMissionImageChanges(false)
         }
       } else {
-        setMuseumSettingsError('Failed to load museum settings')
+        const errorMsg = 'Failed to load museum settings'
+        setMuseumSettingsError(errorMsg)
+        if (showMuseumInfo) {
+          setMuseumInfoError(errorMsg)
+        }
       }
     } catch (error) {
       console.error('Fetch museum settings error:', error)
-      setMuseumSettingsError('An error occurred while loading museum settings')
+      const errorMsg = 'An error occurred while loading museum settings'
+      setMuseumSettingsError(errorMsg)
+      if (showMuseumInfo) {
+        setMuseumInfoError(errorMsg)
+      }
     } finally {
       setMuseumSettingsLoading(false)
+      if (showMuseumInfo) {
+        setMuseumInfoLoading(false)
+      }
     }
   }
 
@@ -553,7 +606,13 @@ const AdminSettings = ({ onActiveChange }) => {
         })
       } else {
         const data = await response.json()
-        const message = data.message || 'Failed to update museum settings'
+        let message = data.message || 'Failed to update museum settings'
+        
+        // Handle version mismatch errors more gracefully
+        if (data.error === 'Transaction conflict' || message.includes('Conflict') || message.includes('version') || message.includes('No matching document')) {
+          message = 'Your changes could not be saved because another admin saved first. Please reload to get the latest content.'
+        }
+        
         setMuseumSettingsError(message)
         Swal.fire({
           title: 'Update Failed',
@@ -665,19 +724,31 @@ const AdminSettings = ({ onActiveChange }) => {
         body: JSON.stringify({
           mission: museumSettings.mission,
           vision: museumSettings.vision,
-          missionSection: sanitizeMissionSectionForSubmit(museumSettings.missionSection)
+          missionSection: sanitizeMissionSectionForSubmit(museumSettings.missionSection),
+          clientTimestamp: museumInfoVersion || Date.now()
         })
       })
 
       if (response.ok) {
         const data = await response.json()
         if (data.data) {
-          setMuseumSettings(prev => ({
-            ...prev,
-            mission: data.data.mission || prev.mission,
-            vision: data.data.vision || prev.vision,
-            missionSection: normalizeMissionSection(data.data.missionSection || prev.missionSection)
-          }))
+          const updatedSettings = {
+            ...museumSettings,
+            mission: data.data.mission || museumSettings.mission,
+            vision: data.data.vision || museumSettings.vision,
+            missionSection: normalizeMissionSection(data.data.missionSection || museumSettings.missionSection)
+          }
+          setMuseumSettings(updatedSettings)
+          // Update the original snapshot to reflect the saved state
+          const newSnapshot = JSON.stringify({
+            mission: updatedSettings.mission || '',
+            vision: updatedSettings.vision || '',
+            missionSection: sanitizeMissionSectionForSubmit(updatedSettings.missionSection)
+          })
+          setOriginalMuseumInfo(newSnapshot)
+        }
+        if (data.newTimestamp) {
+          setMuseumInfoVersion(data.newTimestamp)
         }
         setMuseumInfoSuccess('Museum information updated successfully!')
         Swal.fire({
@@ -689,13 +760,34 @@ const AdminSettings = ({ onActiveChange }) => {
         setTimeout(() => setMuseumInfoSuccess(''), 3000)
       } else {
         const data = await response.json()
-        setMuseumInfoError(data.message || 'Failed to update museum information')
+        let errorMessage = data.message || 'Failed to update museum information'
+        
+        // Check for TBCC conflict error or version mismatch
+        if (data.error === 'Transaction conflict' || errorMessage.includes('Conflict') || errorMessage.includes('version') || errorMessage.includes('No matching document')) {
+          errorMessage = '⚠️ Your changes could not be saved because another admin saved first. Please reload to get the latest content.'
+          setMuseumInfoError(errorMessage)
+          Swal.fire({
+            title: '⚠️ Edit Conflict',
+            html: '<p>Another admin saved changes to Museum Information before you.</p><p>Your edits were not saved. Please reload this page to get the latest version, then try again.</p>',
+            icon: 'warning',
+            confirmButtonColor: '#dc143c',
+            confirmButtonText: 'Reload Page',
+            showCancelButton: true,
+            cancelButtonText: 'Close'
+          }).then((result) => {
+            if (result.isConfirmed) {
+              window.location.reload()
+            }
+          })
+        } else {
+          setMuseumInfoError(errorMessage)
         Swal.fire({
           title: 'Update Failed',
-          text: data.message || 'Failed to update museum information',
+            text: errorMessage,
           icon: 'error',
           confirmButtonColor: '#dc143c'
         })
+        }
       }
     } catch (error) {
       console.error('Update museum info error:', error)
@@ -834,7 +926,9 @@ const AdminSettings = ({ onActiveChange }) => {
                       fontSize: '14px',
                       fontFamily: 'inherit',
                       resize: 'vertical',
-                      minHeight: '120px'
+                      minHeight: '120px',
+                      backgroundColor: '#ffffff',
+                      cursor: 'text'
                     }}
                   />
                   <p style={{ margin: '8px 0 0', fontSize: '12px', color: '#6c757d' }}>
@@ -867,7 +961,9 @@ const AdminSettings = ({ onActiveChange }) => {
                       fontSize: '14px',
                       fontFamily: 'inherit',
                       resize: 'vertical',
-                      minHeight: '120px'
+                      minHeight: '120px',
+                      backgroundColor: '#ffffff',
+                      cursor: 'text'
                     }}
                   />
                   <p style={{ margin: '8px 0 0', fontSize: '12px', color: '#6c757d' }}>
@@ -1775,7 +1871,44 @@ const AdminSettings = ({ onActiveChange }) => {
           <p className="dash-subtitle">Manage museum settings and system preferences</p>
         </div>
       </div>
+
+      {museumSettingsLoading && (
+        <div style={{ textAlign: 'center', padding: '40px' }}>
+          <div style={{ fontSize: '24px', marginBottom: '10px' }}>⏳</div>
+          <div>Loading settings...</div>
+        </div>
+      )}
+
+      {museumSettingsError && !museumSettingsLoading && (
+        <div style={{
+          background: 'rgba(220, 20, 60, 0.1)',
+          border: '1px solid rgba(220, 20, 60, 0.3)',
+          color: '#dc143c',
+          padding: '12px 16px',
+          borderRadius: '8px',
+          marginBottom: '20px',
+          fontSize: '14px'
+        }}>
+          {museumSettingsError}
+          <button
+            onClick={() => fetchMuseumSettings()}
+            style={{
+              marginLeft: '12px',
+              padding: '4px 12px',
+              background: '#dc143c',
+              color: 'white',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: 'pointer',
+              fontSize: '12px'
+            }}
+          >
+            Retry
+          </button>
+        </div>
+      )}
       
+      {!museumSettingsLoading && (
       <div className="settings-grid">
         <div 
           className="setting-card"
@@ -1914,6 +2047,7 @@ const AdminSettings = ({ onActiveChange }) => {
           )}
         </div>
       </div>
+      )}
     </div>
   )
 }

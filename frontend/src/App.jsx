@@ -16,19 +16,59 @@ function App() {
   const [userType, setUserType] = React.useState(null)
   const [isLoading, setIsLoading] = React.useState(true)
 
-  React.useEffect(() => {
+  const checkAuth = React.useCallback(() => {
     const superAdminToken = localStorage.getItem('superadmin_token')
     const adminToken = localStorage.getItem('admin_token')
     
-    if (superAdminToken) {
+    // Check if we have valid tokens
+    const hasSuperAdminToken = superAdminToken && superAdminToken !== 'null' && superAdminToken !== 'undefined'
+    const hasAdminToken = adminToken && adminToken !== 'null' && adminToken !== 'undefined'
+    
+    // Only update userType if we have a valid token
+    if (hasSuperAdminToken) {
       setUserType('superadmin')
-    } else if (adminToken) {
+    } else if (hasAdminToken) {
       setUserType('admin')
     } else {
+      // Only set to null if we're sure tokens don't exist
+      // This prevents redirects during component mounting or timing issues
       setUserType(null)
     }
     setIsLoading(false)
   }, [])
+
+  React.useEffect(() => {
+    checkAuth()
+    
+    // Listen for storage changes (when tokens are added/removed)
+    // Note: storage event only fires from OTHER tabs/windows, not same tab
+    const handleStorageChange = (e) => {
+      if (e.key === 'superadmin_token' || e.key === 'admin_token') {
+        // Only check auth if token was actually removed (newValue is null)
+        // Don't re-check if token was just updated (might cause timing issues)
+        if (e.newValue === null || e.oldValue !== null) {
+          checkAuth()
+        }
+      }
+    }
+    
+    window.addEventListener('storage', handleStorageChange)
+    
+    // Also listen for custom logout events (explicit logout)
+    const handleLogout = () => {
+      // Explicit logout - always check auth
+      checkAuth()
+    }
+    
+    window.addEventListener('adminLoggedOut', handleLogout)
+    window.addEventListener('superadminLoggedOut', handleLogout)
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange)
+      window.removeEventListener('adminLoggedOut', handleLogout)
+      window.removeEventListener('superadminLoggedOut', handleLogout)
+    }
+  }, [checkAuth])
 
   const renderDashboard = () => {
     switch (userType) {

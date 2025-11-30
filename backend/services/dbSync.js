@@ -60,6 +60,9 @@ class DatabaseSyncService {
         case 'insert':
           await collection.insertOne(change.fullDocument)
           logger.debug(`📥 Synced INSERT: ${collectionName}`, { id: change.fullDocument._id })
+          console.log(`📥 [SYNC] INSERT → ${dbName}.${collectionName}`, { 
+            id: change.fullDocument._id?.toString() || 'N/A' 
+          })
           break
 
         case 'update':
@@ -79,11 +82,18 @@ class DatabaseSyncService {
             await collection.updateOne({ _id: change.documentKey._id }, { $set: updateDoc })
           }
           logger.debug(`📥 Synced UPDATE: ${collectionName}`, { id: change.documentKey._id })
+          console.log(`📥 [SYNC] UPDATE → ${dbName}.${collectionName}`, { 
+            id: change.documentKey._id?.toString() || 'N/A',
+            updatedFields: Object.keys(change.updateDescription?.updatedFields || {})
+          })
           break
 
         case 'delete':
           await collection.deleteOne({ _id: change.documentKey._id })
           logger.debug(`📥 Synced DELETE: ${collectionName}`, { id: change.documentKey._id })
+          console.log(`📥 [SYNC] DELETE → ${dbName}.${collectionName}`, { 
+            id: change.documentKey._id?.toString() || 'N/A' 
+          })
           break
 
         case 'replace':
@@ -91,6 +101,9 @@ class DatabaseSyncService {
             await collection.replaceOne({ _id: change.documentKey._id }, change.fullDocument)
           }
           logger.debug(`📥 Synced REPLACE: ${collectionName}`, { id: change.documentKey._id })
+          console.log(`📥 [SYNC] REPLACE → ${dbName}.${collectionName}`, { 
+            id: change.documentKey._id?.toString() || 'N/A' 
+          })
           break
       }
     } catch (error) {
@@ -112,8 +125,14 @@ class DatabaseSyncService {
 
         try {
           await this.syncChange(change, dbName, collectionName)
+          // Log successful sync for verification
+          console.log(`✅ Synced ${change.operationType.toUpperCase()}: ${dbName}.${collectionName}`, {
+            id: change.documentKey?._id?.toString() || 'N/A',
+            timestamp: new Date().toISOString()
+          })
         } catch (error) {
           logger.error(`Error syncing change in ${collectionName}:`, error.message)
+          console.error(`❌ Sync failed for ${dbName}.${collectionName}:`, error.message)
         }
       })
 
@@ -177,6 +196,9 @@ class DatabaseSyncService {
             // Insert all documents
             await localCollection.insertMany(documents)
             logger.info(`✅ Synced ${documents.length} documents: ${dbName}.${collectionName}`)
+            console.log(`✅ Initial sync: ${dbName}.${collectionName} - ${documents.length} documents copied from Atlas to Local`)
+          } else {
+            console.log(`ℹ️  No documents to sync: ${dbName}.${collectionName}`)
           }
         }
       }
@@ -221,6 +243,10 @@ class DatabaseSyncService {
 
     this.isSyncing = true
     logger.info('✅ Real-time sync is now active!')
+    console.log('✅ Real-time database sync is ACTIVE!')
+    console.log('   - Atlas (Primary) → Local (Secondary)')
+    console.log('   - All changes will be synced in real-time')
+    console.log('   - Both databases will have the same data')
   }
 
   // Stop sync
